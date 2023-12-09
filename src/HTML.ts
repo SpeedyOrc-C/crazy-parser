@@ -244,6 +244,35 @@ export class Tag extends BaseTag
     {
         return `<${super.dump()}>${this.children.map(c => c.dump()).join("")}</${this.tagName}>`;
     }
+
+    leaves(): (TagVoid | TextNode)[]
+    {
+        const result: (TagVoid | TextNode)[] = [];
+
+        for (const c of this.children)
+            if (c instanceof Tag)
+                result.push(...c.leaves())
+            else if (c instanceof TagVoid || c instanceof TextNode)
+                result.push(c)
+
+        return result;
+    }
+
+    texts(): TextNode[]
+    {
+        const result: TextNode[] = [];
+
+        for (const c of this.children)
+            if (c instanceof Tag)
+                if (c.tagName != "span")
+                    result.push(...c.texts())
+                else
+                    result.push(...c.texts())
+            else if (c instanceof TextNode)
+                result.push(c)
+
+        return result;
+    }
 }
 
 export class TagVoid extends BaseTag
