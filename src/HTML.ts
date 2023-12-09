@@ -86,7 +86,7 @@ export class Attribute
     }
 }
 
-export abstract class BaseNode
+export abstract class BaseNode implements IBaseNode
 {
     abstract dump(): string;
 
@@ -101,6 +101,79 @@ export abstract class BaseNode
         this.parent.children.splice(index, 1, node);
         node.parent = this.parent;
     }
+
+    static inlineLevelTags = new Set([
+        "span", "em", "b", "i", "q", "mark"
+    ]);
+
+    mergeContinuousTexts(recursive=true): void
+    {
+        if (!(this instanceof Tag)) return;
+
+        if (this.children.length <= 1) return;
+
+        const length = this.children.length;
+        const children: IBaseNode[] = [];
+
+        for (let left = 0; left < length;) {
+
+            if (!(this.children[left] instanceof TextNode)) {
+                if (recursive) {
+                    this.children[left].mergeContinuousTexts(recursive)
+                }
+
+                children.push(this.children[left]);
+                left += 1;
+                continue;
+            }
+
+            let right = left;
+            while (right <= length && this.children[right] instanceof TextNode)
+                right += 1;
+
+            const texts: string[] = []
+
+            for (let i = left; i < right; i += 1)
+                texts.push((this.children[i] as TextNode).text)
+
+            const node = new TextNode(texts.join(""));
+            node.parent = this;
+            children.push(node)
+
+            left = right;
+        }
+
+        this.children = children;
+    }
+
+    flattenInline(recursive=true): void
+    {
+        if (!(this instanceof Tag)) return;
+
+        const children: IBaseNode[] = [];
+
+        for (const c of this.children) {
+            if (!(c instanceof Tag)) {
+                children.push(c);
+                continue;
+            }
+
+            if (recursive) {
+                c.flattenInline();
+            }
+
+            if (BaseTag.inlineLevelTags.has(c.tagName)) {
+                for (const cc of c.children) {
+                    cc.parent = this;
+                    children.push(cc);
+                }
+            }
+        }
+
+        this.children = children;
+
+        this.mergeContinuousTexts(recursive);
+    }
 }
 
 export interface IBaseNode
@@ -110,6 +183,10 @@ export interface IBaseNode
     dump(): string;
 
     replaceWith(node: IBaseNode): void;
+
+    mergeContinuousTexts(recursive: boolean): void
+
+    flattenInline(): void
 }
 
 export class BaseTag extends BaseNode implements IBaseNode

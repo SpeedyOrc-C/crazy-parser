@@ -2,7 +2,7 @@ import {documentP, Tag, TagVoid, TextNode} from "../src/HTML";
 
 test("nodeP", async () => {
     const [[a, b, c]] =
-        await documentP(`<div>Hello</div><img alt="description &amp; care"><p>Wo<b>r</b>ld</p>`);
+        await documentP(`<div><div>Hello</div><img alt="description &amp; care"><p>Wo<b>r</b>ld</p></div>`);
 
     if (!(a instanceof Tag)) throw new Error();
     if (!(b instanceof TagVoid)) throw new Error();
@@ -29,4 +29,39 @@ test("nodeP", async () => {
     expect(((c.children[1] as Tag).children[0] as TextNode).text).toBe("r");
     expect(c.children[2]).toBeInstanceOf(TextNode);
     expect((c.children[2] as TextNode).text).toBe("ld");
+});
+
+test("Tag.mergeContinuousText", () => {
+    const t = new Tag("div", [], [
+        new TextNode("H"),
+        new TextNode("E"),
+        new Tag("div", [], [
+            new TextNode("!"),
+            new TextNode("#"),
+            new TextNode("?"),
+        ]),
+        new TextNode("L"),
+        new TextNode("L"),
+        new TextNode("O"),
+        new Tag("div", [], []),
+        new TextNode("WOR"),
+        new TextNode("LD"),
+    ]);
+
+    t.mergeContinuousTexts();
+
+    expect((t.children[0] as TextNode).text).toBe("HE");
+    expect(((t.children[1] as Tag).children[0] as TextNode).text).toBe("!#?");
+    expect((t.children[2] as TextNode).text).toBe("LLO");
+    expect((t.children[4] as TextNode).text).toBe("WORLD");
+});
+
+test("Tag.flattenInline", async () => {
+    const [[t]] =
+        await documentP(`<p>Wo<b>r</b><b><b><b>l</b></b></b><i>d</i></p>`);
+
+    if (!(t instanceof Tag)) throw new Error();
+
+    t.flattenInline();
+    expect((t.children[0] as TextNode).text).toBe("World")
 });
