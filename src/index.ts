@@ -2,6 +2,7 @@ import {
     Tag,
     TagVoid,
     TextNode,
+    IBaseNode,
     nodeP,
     documentP,
 } from "./HTML";
@@ -12,6 +13,7 @@ export {
     Tag,
     TagVoid,
     TextNode,
+    IBaseNode,
     nodeP,
     documentP,
     Parser,
