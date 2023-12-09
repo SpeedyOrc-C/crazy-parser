@@ -17,6 +17,7 @@
   "keywords": [],
   "author": "chen-zhanming",
   "license": "MIT",
+  "repository": { "url": "https://github.com/SpeedyOrc-C/crazy-parser" },
   "devDependencies": {
     "@types/jest": "^29.5.10",
     "jest": "^29.7.0",
