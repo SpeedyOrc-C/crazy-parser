@@ -3,6 +3,7 @@ import {
     TagVoid,
     TextNode,
     IBaseNode,
+    Attribute,
     nodeP,
     documentP,
 } from "./HTML";
@@ -14,6 +15,7 @@ export {
     TagVoid,
     TextNode,
     IBaseNode,
+    Attribute,
     nodeP,
     documentP,
     Parser,
