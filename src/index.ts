@@ -8,6 +8,10 @@ import {
     documentP,
 } from "./HTML";
 
+import {
+    div
+} from "./HTML-Shorthand";
+
 import Parser from "./Parser";
 
 export {
@@ -18,5 +22,6 @@ export {
     Attribute,
     nodeP,
     documentP,
+    div,
     Parser,
 }
