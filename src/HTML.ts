@@ -167,6 +167,8 @@ export abstract class BaseNode implements IBaseNode
                     cc.parent = this;
                     children.push(cc);
                 }
+            } else {
+                children.push(c);
             }
         }
 

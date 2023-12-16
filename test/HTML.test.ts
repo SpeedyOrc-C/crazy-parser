@@ -65,3 +65,14 @@ test("Tag.flattenInline", async () => {
     t.flattenInline();
     expect((t.children[0] as TextNode).text).toBe("World")
 });
+
+test("Tag.flattenInline No effect", async () => {
+    const [[t]] =
+        await documentP(`<div><div><div>Hello</div></div></div>`)
+
+    if (!(t instanceof Tag)) throw new Error();
+
+    t.flattenInline();
+    expect((((t.children[0] as Tag).children[0] as Tag).children[0] as TextNode).text).toBe("Hello")
+});
+
