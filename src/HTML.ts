@@ -1,40 +1,12 @@
 import {alt, str, map, opt, TParser, pred, some, span, alts, many} from "./Parser";
 
-class Entity
-{
-    static entityMapping = new Map<string, string>([
-        ["amp", "&"],
-        ["lt", "<"],
-        ["gt", ">"],
-        ["quot", "\""],
-        ["apos", "'"],
-    ]);
-
-    static baseEntityP = (invalidChars: Set<string>): TParser<string> => (s: string) => new Promise((just, nothing) =>
-    {
-        if (s.length == 0) {
-            nothing();
-        } else if (s.startsWith("&")) {
-            s = s.slice(1);
-            for (const [entity, char] of Entity.entityMapping) {
-                if (s.startsWith(entity + ";")) {
-                    just([char, s.slice(entity.length + 1)]);
-                }
-            }
-            nothing();
-        } else {
-            for (const char of invalidChars) {
-                if (s.startsWith(char)) {
-                    nothing();
-                }
-            }
-            just([s[0], s.slice(1)]);
-        }
-    });
-
-    static parse = Entity.baseEntityP(new Set(["<", ">"]));
-    static parseStr = Entity.baseEntityP(new Set(["\"", "'"]));
-}
+const entityMapping = new Map<string, string>([
+    ["&amp;", "&"],
+    ["&lt;", "<"],
+    ["&gt;", ">"],
+    ["&quot;", "\""],
+    ["&apos;", "'"],
+]);
 
 export const tagNameP: TParser<string> = async (s: string) =>
 {
@@ -62,12 +34,32 @@ export class Attribute
             ["'", "&apos;"],
         ]);
 
+    static async attributeValueInnerP(input: string): Promise<[string, string]>
+    {
+        let end = input.length;
+        for (let i = 0; i < input.length; i += 1) {
+            if (input[i] == '"' || input[i] == "'") {
+                end = i;
+                break;
+            }
+        }
+
+        let textNodeRaw = input.slice(0, end);
+        const tail = input.slice(end);
+
+        for (const [entity, char] of entityMapping) {
+            textNodeRaw = textNodeRaw.replaceAll(entity, char);
+        }
+
+        return [textNodeRaw, tail];
+    }
+
     static attributeValueP: TParser<string> = async (s: string) =>
     {
         const [delimiter, tail] = await alt(str("\""), str("'"))(s);
-        const [value, tail2] = await some(Entity.parseStr)(tail);
+        const [value, tail2] = await Attribute.attributeValueInnerP(tail);
         const [, tail3] = await pred(c => c == delimiter)(tail2);
-        return [value.join(""), tail3];
+        return [value, tail3];
     }
 
     static async parse(s: string): Promise<[Attribute, string]>
@@ -322,7 +314,27 @@ export class TextNode extends BaseNode implements IBaseNode
         [">", "&gt;"],
     ]);
 
-    static parse: TParser<TextNode> = map(many(Entity.parse), cs => new TextNode(cs.join("")));
+    static async parse(input: string): Promise<[TextNode, string]>
+    {
+        let end = input.length;
+        for (let i = 0; i < input.length; i += 1) {
+            if (input[i] == "<" || input[i] == ">") {
+                end = i;
+                break;
+            }
+        }
+
+        if (end == 0) throw new Error();
+
+        let textNodeRaw = input.slice(0, end);
+        const tail = input.slice(end);
+
+        for (const [entity, char] of entityMapping) {
+            textNodeRaw = textNodeRaw.replaceAll(entity, char);
+        }
+
+        return [new TextNode(textNodeRaw), tail];
+    }
 
     dump(): string
     {
