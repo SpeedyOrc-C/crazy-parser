@@ -312,6 +312,7 @@ export class TextNode extends BaseNode implements IBaseNode
         ["&", "&amp;"],
         ["<", "&lt;"],
         [">", "&gt;"],
+        [" ", "&nbsp;"],
     ]);
 
     static async parse(input: string): Promise<[TextNode, string]>
