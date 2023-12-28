@@ -12,7 +12,7 @@ import {
     div
 } from "./HTML-Shorthand";
 
-import Parser from "./Parser";
+import Parser, { TParser } from "./Parser";
 
 export {
     Tag,
@@ -24,4 +24,5 @@ export {
     documentP,
     div,
     Parser,
+    TParser,
 }

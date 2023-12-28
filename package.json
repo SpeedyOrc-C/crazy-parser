@@ -1,6 +1,6 @@
 {
   "name": "crazy-parser",
-  "version": "0.4.2",
+  "version": "0.4.5",
   "description": "Promise based parser.",
 
   "main": "./dist/index.js",
