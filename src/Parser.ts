@@ -70,13 +70,21 @@ export const span = (p: (char: string) => boolean): TParser<string> => (input: s
 
 export const opt = <T>(p: TParser<T>): TParser<T | null> => (s: string) => p(s).catch(() => [null, s]);
 
-export const str = (char: string) => (input: string): Promise<[string, string]> => new Promise((just, nothing) =>
+export const str = (s: string): TParser<string> => async (input: string) =>
 {
-    if (input.startsWith(char))
-        just([char, input.slice(char.length)]);
+    if (input.startsWith(s))
+        return [s, input.slice(s.length)];
     else
-        nothing();
-});
+        throw "";
+};
+
+export const strict = <T>(p: TParser<T>) => async (input: string): Promise<T> => {
+    const [result, tail] = await p(input);
+    if (tail.length == 0)
+        return result;
+    else
+        throw "";
+};
 
 export default class Parser
 {
@@ -89,4 +97,5 @@ export default class Parser
     static span = span;
     static opt = opt;
     static str = str;
+    static strict = strict;
 }
