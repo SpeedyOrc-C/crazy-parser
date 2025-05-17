@@ -1,3 +1,7 @@
 # Crazy Parser
 
-A lightweight parser combinator.
+```sh
+npm i crazy-parser
+```
+
+A light-weight parser combinator.

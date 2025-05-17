@@ -13,6 +13,19 @@ export class Parser<A>
     )
     {}
 
+    cmap<B>(b: B): Parser<B>
+    {
+        return new Parser<B>((input, state) =>
+        {
+            const result = this.f(input, state)
+
+            if (result == Fail)
+                return Fail
+
+            return b
+        })
+    }
+
     map<B>(f: (a: A) => B): Parser<B>
     {
         return new Parser<B>((input, state) =>

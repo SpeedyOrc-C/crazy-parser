@@ -1,7 +1,7 @@
 {
   "name": "crazy-parser",
-  "version": "0.6.0",
-  "description": "Promise based parser.",
+  "version": "0.7.0",
+  "description": "A light-weight parser combinator",
 
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
