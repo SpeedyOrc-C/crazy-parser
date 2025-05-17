@@ -1,101 +1,349 @@
-export type TParser<T> = (input: string) => Promise<[T, string]>;
-export const map = <A, B>(p: TParser<A>, f: (a: A) => B): TParser<B> => (input: string) =>
-    p(input).then(([a, rest]) => [f(a), rest]);
+export const Fail = Symbol()
 
-export const alt = <T>(p1: TParser<T>, p2: TParser<T>): TParser<T> => (input: string) =>
-    p1(input).catch(() => p2(input));
+export type TFail = typeof Fail
 
-export const alts = <T>(...ps: TParser<T>[]) => async (input: string): Promise<[T, string]> =>
+export type State = {
+    index: number
+}
+
+export class Parser<A>
 {
-    if (ps.length == 1)
-        return ps[0](input);
-    else
-        try {
-            return await ps[0](input);
-        } catch {
-            return await alts(...ps.slice(1))(input);
+    constructor(
+        public readonly f: (input: Array<string>, state: State) => A | TFail
+    )
+    {}
+
+    map<B>(f: (a: A) => B): Parser<B>
+    {
+        return new Parser<B>((input, state) =>
+        {
+            const result = this.f(input, state)
+
+            if (result == Fail)
+                return Fail
+
+            return f(result)
+        })
+    }
+
+    or<B>(p: Parser<B>): Parser<A | B>
+    {
+        return new Parser<A | B>((input, state) =>
+        {
+            const result = this.f(input, state)
+
+            if (result != Fail)
+                return result
+
+            return p.f(input, state)
+        })
+    }
+
+    bind<B>(gf: (a: A) => Parser<B>): Parser<B>
+    {
+        return new Parser<B>((input, state) =>
+        {
+            const result = this.f(input, state)
+
+            if (result == Fail)
+                return Fail
+
+            return gf(result).f(input, state)
+        })
+    }
+
+    _$_<B>(p: Parser<B>): Parser<[A, B]>
+    {
+        return this.bind(a => p.map(b => [a, b]))
+    }
+
+    and<B>(p: Parser<B>): Parser<[A, B]>
+    {
+        return this._$_(p)
+    }
+
+    left<B>(p: Parser<B>): Parser<A>
+    {
+        return this._$(p)
+    }
+
+    _$<B>(p: Parser<B>): Parser<A>
+    {
+        return this.bind(a => p.map(_ => a))
+    }
+
+    right<B>(p: Parser<B>): Parser<B>
+    {
+        return this.$_(p)
+    }
+
+    $_<B>(p: Parser<B>): Parser<B>
+    {
+        return this.bind(_ => p)
+    }
+
+    where(c: (a: A) => boolean): Parser<A>
+    {
+        return new Parser((input, state) =>
+        {
+            const result = this.f(input, state)
+
+            if (result == Fail)
+                return Fail
+
+            if (!c(result))
+                return Fail
+
+            return result
+        })
+    }
+
+    x(n: number): Parser<Array<A>>
+    {
+        if (n < 1)
+            throw Error("Number of repetition must be greater than 1")
+
+        const ps: Array<Parser<A>> = []
+
+        for (let i = 0; i < n; i += 1)
+        {
+            ps.push(this)
         }
-};
 
-export const some = <T>(p: TParser<T>): TParser<T[]> => (input: string) => new Promise((just, _) =>
+        return sequence(ps)
+    }
+
+    parse(input: string): [A, State] | TFail
+    {
+        const state: State = {index: 0}
+
+        const result = this.f(Array.from(input), state)
+
+        if (result == Fail)
+            return Fail
+
+        return [result, state]
+    }
+}
+
+export function pure<A>(a: A): Parser<A>
 {
-    const results: T[] = [];
-    const loop = (input: string) =>
-        p(input)
-            .then(([result, rest]) =>
+    return new Parser<A>(_ => a)
+}
+
+export const empty = new Parser<any>(() => Fail)
+
+export function asum<Ts extends Array<any>>
+(ps: { [I in keyof Ts]: Parser<Ts[I]> }): Parser<Ts[number]>
+{
+    if (ps.length == 0)
+        return empty
+
+    return ps.reduce((sum, p) => sum.or(p))
+}
+
+export function sequence<Ts extends Array<any>>
+(ps: { [I in keyof Ts]: Parser<Ts[I]> }): Parser<Ts>
+{
+    return new Parser<Ts>((input, state) =>
+    {
+        const oldIndex = state.index
+
+        const results: any[] = []
+
+        for (const p of ps)
+        {
+            const result = p.f(input, state)
+
+            if (result == Fail)
             {
-                results.push(result);
-                loop(rest);
-            })
-            .catch(() => just([results, input]));
+                state.index = oldIndex
+                return Fail
+            }
 
-    loop(input);
-});
+            results.push(result)
+        }
 
-export const many = <T>(p: TParser<T>): TParser<T[]> => (input: string) => new Promise((just, nothing) =>
+        return results as Ts
+    })
+}
+
+export const eof = new Parser<unknown>((input, state) =>
 {
-    const results: T[] = [];
-    const loop = (input: string) =>
-        p(input)
-            .then(([result, rest]) =>
-            {
-                results.push(result);
-                loop(rest);
-            })
-            .catch(() => results.length > 0 ? just([results, input]) : nothing());
+    if (input.length < state.index)
+        return Fail
+})
 
-    loop(input);
-});
-
-export const pred = (p: (input: string) => boolean): TParser<string> => (input: string) => new Promise((just, nothing) =>
+export const one = new Parser<string>((input, state) =>
 {
-    if (input.length > 0 && p(input[0]))
-        just([input[0], input.slice(1)]);
-    else
-        nothing();
-});
+    if (state.index >= input.length)
+        return Fail
 
-export const span = (p: (char: string) => boolean): TParser<string> => (input: string) => new Promise((just, nothing) =>
+    const char = input[state.index]
+
+    state.index += 1
+
+    return char
+})
+
+export function char<A extends string>(c: A): Parser<A>
 {
-    let length = 0;
+    return new Parser<A>((input, state) =>
+    {
+        if (state.index >= input.length)
+            return Fail
 
-    while (length < input.length && p(input[length]))
-        length += 1;
+        const char = input[state.index]
 
-    if (length > 0)
-        just([input.slice(0, length), input.slice(length)]);
-    else
-        nothing();
-});
+        if (char != c)
+            return Fail
 
-export const opt = <T>(p: TParser<T>): TParser<T | null> => (s: string) => p(s).catch(() => [null, s]);
+        state.index += 1
 
-export const str = (s: string): TParser<string> => async (input: string) =>
+        return <A>char
+    })
+}
+
+export const digit =
+    asum(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"].map(char))
+
+export const upper =
+    asum([
+        "A", "B", "C", "D", "E", "F", "G",
+        "H", "I", "J", "K", "L", "M", "N",
+        "O", "P", "Q", "R", "S", "T",
+        "U", "V", "W", "X", "Y", "Z"].map(char))
+
+export const lower =
+    asum([
+        "a", "b", "c", "d", "e", "f", "g",
+        "h", "i", "j", "k", "l", "m", "n",
+        "o", "p", "q", "r", "s", "t",
+        "u", "v", "w", "x", "y", "z"].map(char))
+
+export const alpha = upper.or(lower)
+
+export const space = char(" ")
+
+export const tab = char("\t")
+
+export const index = new Parser<number>((_, state) => state.index)
+
+export function withRange<A>(p: Parser<A>): Parser<[A, [number, number]]>
 {
-    if (input.startsWith(s))
-        return [s, input.slice(s.length)];
-    else
-        throw "";
-};
+    return new Parser<[A, [number, number]]>((input, state) =>
+    {
+        const start = state.index
 
-export const strict = <T>(p: TParser<T>) => async (input: string): Promise<T> => {
-    const [result, tail] = await p(input);
-    if (tail.length == 0)
-        return result;
-    else
-        throw "";
-};
+        const result = p.f(input, state)
 
-export default class Parser
+        if (result == Fail)
+            return Fail
+
+        const end = state.index
+
+        return [result, [start, end]]
+    })
+}
+
+export function str(s: string): Parser<string>
 {
-    static map = map;
-    static alt = alt;
-    static alts = alts;
-    static some = some;
-    static many = many;
-    static pred = pred;
-    static span = span;
-    static opt = opt;
-    static str = str;
-    static strict = strict;
+    const cs = Array.from(s)
+
+    return new Parser<string>((input, state) =>
+    {
+        if (state.index + cs.length > input.length)
+            return Fail
+
+        for (let i = 0; i < cs.length; i += 1)
+            if (input[state.index + i] != cs[i])
+                return Fail
+
+        state.index += cs.length
+
+        return s
+    })
+}
+
+export function span(f: (c: string) => boolean): Parser<Array<string>>
+{
+    return new Parser<Array<string>>((input, state) =>
+    {
+        let index = state.index
+
+        while (index < input.length && f(input[index]))
+            index += 1
+
+        const result = input.slice(state.index, index)
+
+        state.index = index
+
+        return result
+    })
+}
+
+export function many<A>(p: Parser<A>): Parser<Array<A>>
+{
+    return new Parser<Array<A>>((input, state) =>
+    {
+        const result: Array<A> = []
+
+        while (true)
+        {
+            const r = p.f(input, state)
+
+            if (r == Fail)
+                break
+
+            result.push(r)
+        }
+
+        return result
+    })
+}
+
+export const some =
+    <A>(p: Parser<A>): Parser<Array<A>> => many(p).bind(rs => rs.length > 0 ? pure(rs) : empty);
+
+/*
+Since JavaScript is a strictly evaluated language,
+this makes it impossible for constants to refer to itself.
+So all parsers refer to itself must be wrapped in a function that takes no arguments
+(in Haskell, a function takes no arguments is totally the same as a constant).
+
+But referring to itself will cause infinite recursion,
+so you must use our `lazy()` wrapper to only evaluate the parser when it's needed.
+
+So here's the full workaround, assume there's a self-referring parser `srp`:
+
+Before:
+
+```ts
+const srp = f(srp)
+```
+
+After:
+
+```ts
+const srp =
+    () => // 1st WRAP!
+        lazy(() => // 2nd WRAP!
+            f(srp()) // Call it!
+        )
+```
+*/
+export function lazy<A>(pg: () => Parser<A>): Parser<A>
+{
+    return new Parser((input, state) => pg().f(input, state))
+}
+
+export function template<Ts extends Array<any>>
+(ss: TemplateStringsArray, ...ps: { [I in keyof Ts]: Parser<Ts[I]> }): Parser<Ts>
+{
+    const sum: Array<Parser<any>> = []
+
+    for (const i in ps)
+        sum.push(str(ss[i]).right(ps[i]))
+
+    return sequence(sum).left(str(ss[ss.length - 1])) as Parser<Ts>
 }
