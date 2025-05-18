@@ -1,5 +1,54 @@
-import {alpha, asum, char, digit, eof, Fail, lazy, many, Parser, some, template} from "../src/Parser";
+import Parser, {alpha, anyChar, char, digit, eof, Fail, lazy, Nothing, pure, space, str, tab, template} from "../src";
+import {many, optional, some} from "../src/prefix";
 
+
+test("Boolean", () =>
+{
+    const bool = str("true").cmap(true).or(str("false").cmap(false))
+
+    const r1 = bool.eval("true")
+    const r2 = bool.eval("false")
+    const r3 = bool.eval("42")
+
+    if (r1 == Fail) fail()
+    if (r2 == Fail) fail()
+    if (r3 != Fail) fail()
+
+    expect(r1).toBe(true)
+    expect(r2).toBe(false)
+})
+
+
+test("List of Integers", () =>
+{
+    const _ints = (): Parser<number[]> => lazy(() =>
+        some(digit).bind(cs1 =>
+            optional(char(",").$_(optional(_ints()))).bind(css =>
+                pure([
+                    parseInt(cs1.join("")),
+                    ...(css == Nothing ? [] : css)
+                ])
+            )
+        )
+    )
+
+    const ints = _ints()
+
+    const r1 = ints.eval("1")
+    const r2 = ints.eval("1,")
+    const r3 = ints.eval("123,4,5,6,7")
+    const r4 = ints.eval("1,2,3,4,567,")
+
+    if (r1 == Fail) fail()
+    if (r2 == Fail) fail()
+    if (r3 == Fail) fail()
+    if (r4 == Fail) fail()
+
+    expect(r1).toStrictEqual([1])
+    expect(r2).toStrictEqual([1])
+    expect(r3).toStrictEqual([123, 4, 5, 6, 7])
+    expect(r4).toStrictEqual([1, 2, 3, 4, 567])
+})
 
 test("Time", () =>
 {
@@ -11,18 +60,18 @@ test("Time", () =>
         .map(cs => parseInt(cs.join("")))
         .where(h => 0 <= h && h <= 59)
 
-    const time = template`${d24}:${d60}:${d60}`
+    const time = template`${d24}:${d60}:${d60}`._$(eof)
 
-    const result = time.parse("12:34:56")
+    const result = time.eval("12:34:56")
 
     if (result == Fail)
         fail()
 
-    expect(result[0]).toStrictEqual([12, 34, 56])
+    expect(result).toStrictEqual([12, 34, 56])
 })
 
 
-test("Recursive in a Pair", () =>
+test("Recursion between 2", () =>
 {
     const a: () => Parser<string> = () => lazy(() =>
         char("A").and(b().or(char("!"))).map(xs => xs.join("")))
@@ -30,12 +79,12 @@ test("Recursive in a Pair", () =>
     const b: () => Parser<string> = () => lazy(() =>
         char("B").and(a().or(char("!"))).map(xs => xs.join("")))
 
-    const result = a().parse("ABABABABABAB!")
+    const result = a()._$(eof).eval("ABABABABABAB!")
 
     if (result == Fail)
         fail()
 
-    expect(result[0]).toBe("ABABABABABAB!")
+    expect(result).toBe("ABABABABABAB!")
 })
 
 
@@ -44,15 +93,11 @@ test("S Expression", () =>
     class Id
     {
         constructor(public name: string) {}
-
-        show(): string { return this.name }
     }
 
     class Ap
     {
         constructor(public f: Expression, public x: Expression) {}
-
-        show(): string { return `(${this.f.show()} ${this.x.show()})` }
     }
 
     type Expression = Id | Ap
@@ -60,27 +105,23 @@ test("S Expression", () =>
     const id =
         some(digit.or(alpha)).map(id => new Id(id.join("")))
 
-    const white =
-        asum([" ", "\t", "\n", "\r"].map(char))
+    const white = space.or(tab).or(anyChar(["\n", "\r"]))
 
     const expr = (): Parser<Expression> => lazy(() =>
     {
-        const applyInner =
-            expr().and(many(some(white).$_(expr())))
+        const begin = char("(").and(many(white))
+        const applyInner = expr().and(many(some(white).$_(expr())))
+        const end = many(white).and(char(")"))
 
-        const apply =
-            char("(").and(many(white))
-                .$_(applyInner)
-                .map(r => r[1]
-                    .reduce((a, b) => new Ap(a, b), r[0]))
-                ._$(many(white).and(char(")")))
+        const apply = begin.$_(applyInner)._$(end)
+            .map(r => r[1].reduce((a, b) => new Ap(a, b), r[0]))
 
         return id.or(apply)
     })
 
     const exprWithWhite = many(white).$_(expr())._$(many(white))._$(eof)
 
-    const result = exprWithWhite.parse(`
+    const result = exprWithWhite.eval(`
         (if (equal (plus 1 1) 2)
         (
             (print (Be You Genius))
@@ -94,7 +135,7 @@ test("S Expression", () =>
     if (result == Fail)
         fail()
 
-    expect(result[0]).toStrictEqual(
+    expect(result).toStrictEqual(
         new Ap(
             new Ap(
                 new Ap(
