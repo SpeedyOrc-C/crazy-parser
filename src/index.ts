@@ -356,8 +356,6 @@ export function sequence<Ts extends Array<any>>
 {
     return new Parser<Ts>((input, state) =>
     {
-        const oldIndex = state.index
-
         const results: any[] = []
 
         for (const p of ps)
@@ -365,10 +363,7 @@ export function sequence<Ts extends Array<any>>
             const result = p.f(input, state)
 
             if (result == Fail)
-            {
-                state.index = oldIndex
                 return Fail
-            }
 
             results.push(result)
         }
@@ -498,16 +493,12 @@ export function span(f: (c: string) => boolean): Parser<Array<string>>
 {
     return new Parser<Array<string>>((input, state) =>
     {
-        let index = state.index
+        let oldIndex = state.index
 
-        while (index < input.length && f(input[index]))
-            index += 1
+        while (state.index < input.length && f(input[state.index]))
+            state.index += 1
 
-        const result = input.slice(state.index, index)
-
-        state.index = index
-
-        return result
+        return input.slice(oldIndex, state.index)
     })
 }
 
