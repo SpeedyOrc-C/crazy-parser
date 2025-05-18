@@ -274,26 +274,26 @@ export default class Parser<A>
     @return A tuple where the first one is the parsed result, if it succeeded. Otherwise, you'll get a `Fail` constant.
     You should import `Fail` to check if it was successful.
     */
-    run(input: string): [A, State] | typeof Fail
+    run(input: string): [A | typeof Fail, State]
     {
         const state: State = {index: 0}
 
         const result = this.f(Array.from(input), state)
 
         if (result == Fail)
-            return Fail
+            return [Fail, state]
 
         return [result, state]
     }
 
     eval(input: string): A | typeof Fail
     {
-        const result = this.run(input)
+        const [result] = this.run(input)
 
         if (result == Fail)
             return Fail
 
-        return result[0]
+        return result
     }
 }
 
