@@ -268,6 +268,30 @@ export default class Parser<A>
     }
 
     /*
+    When this parser failed, rewind the cursor back to where it started.
+
+    This function doesn't have a prefix version because `try` is a JavaScript keyword.
+
+    @return A new parser that will rewind the cursor back to where it started if the parsing failed.
+    */
+    try(): Parser<A>
+    {
+        return new Parser<A>((input, state) =>
+        {
+            const oldState = structuredClone(state)
+
+            const result = this.f(input, state)
+
+            if (result == Fail)
+            {
+                state.index = oldState.index
+            }
+
+            return result
+        })
+    }
+
+    /*
     Try to parse the given string.
 
     @param input - The string to be parsed.

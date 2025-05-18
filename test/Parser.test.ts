@@ -1,3 +1,4 @@
+import {test, expect, assert} from "vitest"
 import Parser, {alpha, anyChar, char, digit, eof, Fail, lazy, Nothing, pure, space, str, tab, template} from "../src";
 import {many, optional, some} from "../src/prefix";
 
@@ -10,12 +11,27 @@ test("Boolean", () =>
     const r2 = bool.eval("false")
     const r3 = bool.eval("42")
 
-    if (r1 == Fail) fail()
-    if (r2 == Fail) fail()
-    if (r3 != Fail) fail()
+    if (r1 == Fail) assert.fail()
+    if (r2 == Fail) assert.fail()
+    if (r3 != Fail) assert.fail()
 
     expect(r1).toBe(true)
     expect(r2).toBe(false)
+})
+
+
+test("Try", () =>
+{
+    const p1 = char("1").and(char("2")).or(str("13"))
+    const p2 = char("1").and(char("2")).try().or(str("13"))
+
+    const r1 = p1.eval("13")
+    const r2 = p1.eval("113")
+    const r3 = p2.eval("13")
+
+    expect(r1).toBe(Fail)
+    expect(r2).toBe("13")
+    expect(r3).toBe("13")
 })
 
 
@@ -39,10 +55,10 @@ test("List of Integers", () =>
     const r3 = ints.eval("123,4,5,6,7")
     const r4 = ints.eval("1,2,3,4,567,")
 
-    if (r1 == Fail) fail()
-    if (r2 == Fail) fail()
-    if (r3 == Fail) fail()
-    if (r4 == Fail) fail()
+    if (r1 == Fail) assert.fail()
+    if (r2 == Fail) assert.fail()
+    if (r3 == Fail) assert.fail()
+    if (r4 == Fail) assert.fail()
 
     expect(r1).toStrictEqual([1])
     expect(r2).toStrictEqual([1])
@@ -65,7 +81,7 @@ test("Time", () =>
     const result = time.eval("12:34:56")
 
     if (result == Fail)
-        fail()
+        assert.fail()
 
     expect(result).toStrictEqual([12, 34, 56])
 })
@@ -82,7 +98,7 @@ test("Recursion between 2", () =>
     const result = a()._$(eof).eval("ABABABABABAB!")
 
     if (result == Fail)
-        fail()
+        assert.fail()
 
     expect(result).toBe("ABABABABABAB!")
 })
@@ -133,7 +149,7 @@ test("S Expression", () =>
     `)
 
     if (result == Fail)
-        fail()
+        assert.fail()
 
     expect(result).toStrictEqual(
         new Ap(

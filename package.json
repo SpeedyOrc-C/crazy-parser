@@ -2,28 +2,23 @@
   "name": "crazy-parser",
   "version": "0.8.1",
   "description": "A light-weight parser combinator",
-
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "exports": {
+    ".": "./dist/index.mjs",
+    "./prefix": "./dist/prefix.mjs"
+  },
   "scripts": {
     "build": "tsup",
-    "test": "jest"
+    "test": "vitest"
   },
-
   "keywords": [],
   "author": "chen-zhanming",
   "license": "MIT",
-  "repository": { "url": "https://github.com/SpeedyOrc-C/crazy-parser" },
+  "repository": {
+    "url": "https://github.com/SpeedyOrc-C/crazy-parser"
+  },
   "devDependencies": {
-    "@types/jest": "^29.5.10",
-    "jest": "^29.7.0",
-    "ts-jest": "^29.3.4",
-    "ts-node": "^10.9.2",
     "tsup": "^8.5.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.3"
   }
 }
