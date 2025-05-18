@@ -311,7 +311,7 @@ export function pure<A>(c: A): Parser<A>
 
 /*
 The parser that always fails.
-The same as `empty` in Hasell.
+The same as `empty` in Haskell.
 */
 export const empty = new Parser<any>(() => Fail)
 
