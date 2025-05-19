@@ -372,6 +372,30 @@ export default class Parser<A>
             resolve(result)
         })
     }
+
+    /*
+    Show a message when the parser succeeded (WIN) or failed (BAD).
+    Don't use is for dumping syntax tree or anything. Only use this for debugging purpose.
+
+    @param message - The message to be shown.
+    @return A new parser that will show the message when it succeeded or failed.
+    */
+    trace(message: any = ""): Parser<A>
+    {
+        return new Parser<A>((input, state) =>
+        {
+            const result = this.f(input, state)
+
+            if (result == Fail)
+            {
+                console.error(`[crazy-parser] BAD`, message)
+                return Fail
+            }
+
+            console.log(`[crazy-parser] WIN`, message)
+            return result
+        })
+    }
 }
 
 /*

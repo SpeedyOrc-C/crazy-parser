@@ -1,5 +1,14 @@
 all:
-	./make.sh
+	cd src && tsc
+
+pack: all
+	pnpm pack
+
+.PHONY: test
+test: clean
+	vitest run --coverage
 
 clean:
-	./clean.sh
+	rm -f ./crazy-parser-*.tgz
+	rm -f ./src/*.js
+	rm -f ./src/*.d.ts

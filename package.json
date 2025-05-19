@@ -1,6 +1,6 @@
 {
   "name": "crazy-parser",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "A light-weight parser combinator",
   "files": [
     "./src/*.ts",
@@ -12,9 +12,9 @@
     "./*": "./src/*.js"
   },
   "scripts": {
-    "build": "make",
-    "test": "vitest",
-    "coverage": "vitest run --coverage"
+    "build": "cd src && tsc",
+    "test": "vitest run --coverage",
+    "clean": "rm -f ./crazy-parser-*.tgz; rm -f ./src/*.js; rm -f ./src/*.d.ts"
   },
   "keywords": [],
   "author": "chen-zhanming",

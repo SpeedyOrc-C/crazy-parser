@@ -1,5 +1,20 @@
 import {test, expect, assert} from "vitest"
-import Parser, {alpha, anyChar, char, digit, eof, Fail, lazy, Nothing, pure, space, str, tab, template} from "../src";
+import Parser, {
+    alpha,
+    anyChar,
+    char,
+    digit,
+    empty,
+    eof,
+    Fail,
+    lazy,
+    Nothing,
+    pure,
+    space,
+    str,
+    tab,
+    template
+} from "../src";
 import {many, optional, some} from "../src/prefix";
 
 
@@ -118,6 +133,13 @@ test("Promise", async () =>
     catch (e)
     {
     }
+})
+
+
+test("Trace", () =>
+{
+    pure(42).trace("Tracing a successful parser").eval("")
+    empty.trace("Tracing a failed parser").eval("")
 })
 
 

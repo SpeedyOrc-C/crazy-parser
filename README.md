@@ -8,46 +8,62 @@ A light-weight parser combinator.
 npm i crazy-parser
 ```
 
-## Build
+## Development
 
-If you have **make** and **tsc** installed, you can compile JS and types by running either of:
+### Using make
+
+Please make sure you have **node**, **tsc** and **vitest** installed.
+
+#### Build
 
 ```sh
 make
 ```
 
-```sh
-./make.sh
-```
-
-And then you can pack it by running:
+#### Build a tarball
 
 ```sh
-npm pack
+make pack
 ```
 
-### Clean up
-
-To clean up the compiled JS and types, run either of:
+#### Clean up
 
 ```sh
 make clean
 ```
 
+#### Test
+
 ```sh
-./clean.sh
+make test
 ```
 
-## Test
+### Using npm
 
-If you have `Vitest` installed, you can run the tests by running either of:
+Please make sure you have **tsc** and **vitest** installed.
+
+#### Build
 
 ```sh
-npm test
+npm run build
 ```
 
-As well as the coverage test:
+#### Build a tarball
 
 ```sh
-npm coverage
+npm run build
+npm pack
+```
+
+#### Clean up
+
+```sh
+npm run clean
+```
+
+#### Test
+
+```sh
+npm run clean
+npm run test
 ```
