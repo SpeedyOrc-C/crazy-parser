@@ -295,7 +295,8 @@ export default class Parser<A>
     Try to parse the given string.
 
     @param input - The string to be parsed.
-    @return A tuple where the first one is the parsed result, if it succeeded. Otherwise, you'll get a `Fail` constant.
+    @return A tuple where the first one is the parsed result, if it succeeded. Or you'll get a `Fail` constant.
+    The second one is the state that could reveal where the parser stopped.
     You should import `Fail` to check if it was successful.
     */
     run(input: string): [A | typeof Fail, State]
@@ -310,6 +311,12 @@ export default class Parser<A>
         return [result, state]
     }
 
+    /*
+    Try to parse the given string.
+
+    @param input - The string to be parsed.
+    @return The parsed result if it succeeded. Or you'll get a `Fail` constant.
+    */
     eval(input: string): A | typeof Fail
     {
         const [result] = this.run(input)
@@ -318,6 +325,52 @@ export default class Parser<A>
             return Fail
 
         return result
+    }
+
+    /*
+    Turn this parser into a promise.
+    This is useful when you don't want to deal with our `Fail` constant.
+
+    @param input - The string to be parsed.
+    @return The promise version of `run()`.
+    */
+    runPromise(input: string): Promise<[A, State]>
+    {
+        return new Promise((resolve, reject) =>
+        {
+            const [result, state] = this.run(input)
+
+            if (result == Fail)
+            {
+                reject("Parsing failed.")
+                return
+            }
+
+            resolve([result, state])
+        })
+    }
+
+    /*
+    Turn this parser into a promise.
+    This is useful when you don't want to deal with our `Fail` constant.
+
+    @param input - The string to be parsed.
+    @return The promise version of `eval()`.
+    */
+    evalPromise(input: string): Promise<A>
+    {
+        return new Promise((resolve, reject) =>
+        {
+            const result = this.eval(input)
+
+            if (result == Fail)
+            {
+                reject("Parsing failed.")
+                return
+            }
+
+            resolve(result)
+        })
     }
 }
 

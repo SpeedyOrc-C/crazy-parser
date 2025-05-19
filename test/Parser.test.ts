@@ -104,6 +104,23 @@ test("Recursion between 2", () =>
 })
 
 
+test("Promise", async () =>
+{
+    await str("hello").evalPromise("hello")
+    await str("hello").runPromise("hello")
+
+    try
+    {
+        await str("world").evalPromise("World")
+        await str("world").runPromise("World")
+        assert.fail("Parser didn't fail.")
+    }
+    catch (e)
+    {
+    }
+})
+
+
 test("S Expression", () =>
 {
     class Id

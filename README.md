@@ -46,6 +46,8 @@ If you have `Vitest` installed, you can run the tests by running either of:
 npm test
 ```
 
+As well as the coverage test:
+
 ```sh
-vitest
+npm coverage
 ```
