@@ -478,7 +478,7 @@ Test if the parser has reached the end of file (string).
 */
 export const eof = new Parser<unknown>((input, state) =>
 {
-    if (input.length < state.index)
+    if (state.index < input.length)
         return Fail
 })
 
