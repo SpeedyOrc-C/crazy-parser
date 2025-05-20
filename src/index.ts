@@ -197,6 +197,11 @@ export default class Parser<A>
         return this.right(p)
     }
 
+    if <C extends boolean>(c: boolean): Parser<C extends true ? A : any>
+    {
+        return c ? this : empty
+    }
+
     /*
     Check if the result meets the requirement.
 
@@ -209,10 +214,7 @@ export default class Parser<A>
         {
             const result = this.f(input, state)
 
-            if (result == Fail)
-                return Fail
-
-            if (!c(result))
+            if (result != Fail && !c(result))
                 return Fail
 
             return result
@@ -283,9 +285,7 @@ export default class Parser<A>
             const result = this.f(input, state)
 
             if (result == Fail)
-            {
                 state.index = oldState.index
-            }
 
             return result
         })

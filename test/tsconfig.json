@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "module": "NodeNext",
     // This test is meant to run by Vitest, without building any code.
     "moduleResolution": "nodenext",
     /* Ensure that casing is correct in imports. */

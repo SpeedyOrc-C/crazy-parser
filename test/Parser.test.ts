@@ -2,6 +2,8 @@ import {test, expect, assert} from "vitest"
 import Parser, {
     alpha,
     anyChar,
+    anyStr,
+    asum,
     char,
     digit,
     empty,
@@ -9,29 +11,52 @@ import Parser, {
     Fail,
     lazy,
     Nothing,
+    one,
     pure,
     space,
+    span,
     str,
     tab,
     template
 } from "../src";
-import {many, optional, some} from "../src/prefix";
+import {many, optional, some, withRange} from "../src/prefix";
 
 
 test("Boolean", () =>
 {
     const bool = str("true").cmap(true).or(str("false").cmap(false))
 
-    const r1 = bool.eval("true")
-    const r2 = bool.eval("false")
-    const r3 = bool.eval("42")
+    expect(bool.eval("true")).toBe(true)
+    expect(bool.eval("false")).toBe(false)
+    expect(bool.eval("42")).toBe(Fail)
+})
 
-    if (r1 == Fail) assert.fail()
-    if (r2 == Fail) assert.fail()
-    if (r3 != Fail) assert.fail()
 
-    expect(r1).toBe(true)
-    expect(r2).toBe(false)
+test("If", () =>
+{
+    expect(pure(42).if(true).eval("")).toBe(42)
+    expect(pure(42).if(false).eval("")).toBe(Fail)
+    expect(empty.if(true).eval("")).toBe(Fail)
+    expect(empty.if(false).eval("")).toBe(Fail)
+})
+
+
+test("One & Many", () =>
+{
+    expect(one.x(3).eval("123")).toStrictEqual(["1", "2", "3"])
+    expect(one.x(4).eval("123")).toBe(Fail)
+
+    try {
+        one.x(-1)
+        assert.fail()
+    } catch (e) {}
+})
+
+
+test("Any", () =>
+{
+    expect(anyChar(["1", "2", "3"]).eval("1")).toBe("1")
+    expect(anyStr(["123", "456", "789"]).eval("456")).toBe("456")
 })
 
 
@@ -47,6 +72,34 @@ test("Try", () =>
     expect(r1).toBe(Fail)
     expect(r2).toBe("13")
     expect(r3).toBe("13")
+})
+
+
+test("Span & Range", () =>
+{
+    const p =
+        span(c => '1' <= c && c <= '3')
+            .$_(span(c => '4' <= c && c <= '6')
+                .withRange().map(r => r[1]))
+            ._$(span(c => '7' <= c && c <= '9'))
+
+    expect(p.eval("321444455556666789")).toStrictEqual([3, 15])
+    expect(one.withRange().eval("")).toBe(Fail)
+})
+
+
+test("Alternative Sum", () =>
+{
+    expect(asum([str("114514"), str("42")]).eval("114514")).toBe("114514")
+    expect(asum([]).eval("114514")).toBe(Fail)
+})
+
+
+test("EOF", () =>
+{
+    expect(eof.eval("")).not.toBe(Fail)
+    expect(eof.eval("1")).toBe(Fail)
+    expect(eof.eval("123")).toBe(Fail)
 })
 
 
@@ -70,11 +123,6 @@ test("List of Integers", () =>
     const r3 = ints.eval("123,4,5,6,7")
     const r4 = ints.eval("1,2,3,4,567,")
 
-    if (r1 == Fail) assert.fail()
-    if (r2 == Fail) assert.fail()
-    if (r3 == Fail) assert.fail()
-    if (r4 == Fail) assert.fail()
-
     expect(r1).toStrictEqual([1])
     expect(r2).toStrictEqual([1])
     expect(r3).toStrictEqual([123, 4, 5, 6, 7])
@@ -93,12 +141,8 @@ test("Time", () =>
 
     const time = template`${d24}:${d60}:${d60}`._$(eof)
 
-    const result = time.eval("12:34:56")
-
-    if (result == Fail)
-        assert.fail()
-
-    expect(result).toStrictEqual([12, 34, 56])
+    expect(time.eval("12:34:56")).toStrictEqual([12, 34, 56])
+    expect(time.eval("99:99:99")).toBe(Fail)
 })
 
 
@@ -127,12 +171,15 @@ test("Promise", async () =>
     try
     {
         await str("world").evalPromise("World")
-        await str("world").runPromise("World")
         assert.fail("Parser didn't fail.")
     }
-    catch (e)
+    catch (e) {}
+
+    try
     {
-    }
+        await str("world").runPromise("World")
+        assert.fail("Parser didn't fail.")
+    } catch (e) {}
 })
 
 
@@ -140,6 +187,13 @@ test("Trace", () =>
 {
     pure(42).trace("Tracing a successful parser").eval("")
     empty.trace("Tracing a failed parser").eval("")
+})
+
+
+test("Other prefix functions", () =>
+{
+    expect(optional(one).eval("42")).toBe("4")
+    expect(withRange(one).eval("42")).toStrictEqual(["4", [0, 1]])
 })
 
 
@@ -164,9 +218,9 @@ test("S Expression", () =>
 
     const expr = (): Parser<Expression> => lazy(() =>
     {
-        const begin = char("(").and(many(white))
+        const begin = char("(")._$_(many(white))
         const applyInner = expr().and(many(some(white).$_(expr())))
-        const end = many(white).and(char(")"))
+        const end = many(white)._$_(char(")"))
 
         const apply = begin.$_(applyInner)._$(end)
             .map(r => r[1].reduce((a, b) => new Ap(a, b), r[0]))

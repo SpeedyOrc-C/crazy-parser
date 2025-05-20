@@ -6,7 +6,7 @@ pack: all
 
 .PHONY: test
 test: clean
-	vitest run --coverage
+	node ./node_modules/vitest/dist/cli.js run --coverage
 
 clean:
 	rm -f ./crazy-parser-*.tgz
