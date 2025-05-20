@@ -197,7 +197,13 @@ export default class Parser<A>
         return this.right(p)
     }
 
-    if <C extends boolean>(c: boolean): Parser<C extends true ? A : any>
+    /*
+    Let this parser fail if the condition is false.
+
+    @param c - The condition
+    @return A parser that immediately fails if the condition is false.
+    */
+    if (c: boolean): Parser<A>
     {
         return c ? this : empty
     }
