@@ -8,6 +8,8 @@ export type State = {
 type Vector<A, Count extends number, TmpResult extends Array<A> = []> =
     TmpResult["length"] extends Count ? TmpResult : Vector<A, Count, [A, ...TmpResult]>
 
+type MaybeJoined<T> = T | [T]
+
 export default class Parser<A>
 {
     constructor(
@@ -442,7 +444,13 @@ asum([a, b, c, d])
 */
 export function asum<Ts extends Array<any>>
 (ps: { [I in keyof Ts]: Parser<Ts[I]> }): Parser<Ts[number]>
+export function asum<Ts extends Array<any>>
+(...ps: { [I in keyof Ts]: Parser<Ts[I]> }): Parser<Ts[number]>
+export function asum<Ts extends Array<any>>
+(...args: MaybeJoined<{ [I in keyof Ts]: Parser<Ts[I]> }>): Parser<Ts[number]>
 {
+    const ps = args[0] instanceof Array ? args[0] : args
+
     if (ps.length == 0)
         return empty
 
@@ -459,8 +467,14 @@ The same as `sequence` in Haskell, but with more precise types thanks to the cha
 If any of it failed, the whole one failed.
 */
 export function sequence<Ts extends Array<any>>
-(ps: { [I in keyof Ts]: Parser<Ts[I]> }): Parser<Ts>
+(ps: { [I in keyof Ts]: Parser<Ts[I]> }): Parser<Ts[number]>
+export function sequence<Ts extends Array<any>>
+(...ps: { [I in keyof Ts]: Parser<Ts[I]> }): Parser<Ts[number]>
+export function sequence<Ts extends Array<any>>
+(...args: MaybeJoined<{ [I in keyof Ts]: Parser<Ts[I]> }>): Parser<Ts>
 {
+    const ps = args[0] instanceof Array ? args[0] : args
+
     return new Parser<Ts>((input, state) =>
     {
         const results: any[] = []

@@ -12,7 +12,7 @@ import Parser, {
     lazy,
     Nothing,
     one,
-    pure,
+    pure, sequence,
     space,
     span,
     str,
@@ -194,6 +194,15 @@ test("Other prefix functions", () =>
 {
     expect(optional(one).eval("42")).toBe("4")
     expect(withRange(one).eval("42")).toStrictEqual(["4", [0, 1]])
+})
+
+
+test("Variable-length arguments", () =>
+{
+    expect(asum(char("1"), char("2")).eval("2")).toBe("2")
+    expect(asum([char("1"), char("2")]).eval("2")).toBe("2")
+    expect(sequence(char("1"), char("2")).eval("12")).toStrictEqual(["1", "2"])
+    expect(sequence([char("1"), char("2")]).eval("12")).toStrictEqual(["1", "2"])
 })
 
 
