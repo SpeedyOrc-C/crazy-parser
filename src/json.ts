@@ -13,7 +13,7 @@ import Parser, {
     sequence,
     space,
     str,
-    tab, template
+    tab
 } from "./index";
 import {many, some} from "./prefix";
 

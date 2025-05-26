@@ -25,5 +25,6 @@
   "files": [
     "./index.ts",
     "./prefix.ts",
+    "./json.ts",
   ]
 }
