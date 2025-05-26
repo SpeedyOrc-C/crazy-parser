@@ -1,4 +1,3 @@
-export const Fail: unique symbol = Symbol("Parser Failure")
 export const Nothing: unique symbol = Symbol("Nothing")
 
 export type State = {
@@ -10,10 +9,10 @@ type Vector<A, Count extends number, TmpResult extends Array<A> = []> =
 
 type MaybeJoined<T> = T | [T]
 
-export default class Parser<A>
+export default class Parser<A, E extends Error = Error>
 {
     constructor(
-        public readonly f: (input: Array<string>, state: State) => A | typeof Fail
+        public readonly f: (input: Array<string>, state: State) => A | E
     )
     {}
 
@@ -24,14 +23,14 @@ export default class Parser<A>
     @param c - The constant
     @return A new parser that always returns that constant.
     */
-    cmap<B>(c: B): Parser<B>
+    cmap<B>(c: B): Parser<B, E>
     {
-        return new Parser<B>((input, state) =>
+        return new Parser<B, E>((input, state) =>
         {
             const result = this.f(input, state)
 
-            if (result == Fail)
-                return Fail
+            if (result instanceof Error)
+                return result
 
             return c
         })
@@ -45,14 +44,14 @@ export default class Parser<A>
     @param f - The modifier function, which takes parser's result and gives a new value.
     @return A new parser that returns the return value of the modifier function.
     */
-    map<B>(f: (a: A) => B): Parser<B>
+    map<B>(f: (a: A) => B): Parser<B, E>
     {
-        return new Parser<B>((input, state) =>
+        return new Parser<B, E>((input, state) =>
         {
             const result = this.f(input, state)
 
-            if (result == Fail)
-                return Fail
+            if (result instanceof Error)
+                return result
 
             return f(result)
         })
@@ -66,13 +65,13 @@ export default class Parser<A>
     @param p - The other parser to try.
     @return A new parser that tries parser `p` if it failed.
     */
-    or<B>(p: Parser<B>): Parser<A | B>
+    or<B, E2 extends Error>(p: Parser<B, E2>): Parser<A | B, E2>
     {
-        return new Parser<A | B>((input, state) =>
+        return new Parser<A | B, E2>((input, state) =>
         {
             const result = this.f(input, state)
 
-            if (result != Fail)
+            if (!(result instanceof Error))
                 return result
 
             return p.f(input, state)
@@ -88,14 +87,14 @@ export default class Parser<A>
     @return A new parser that firstly tries the first one, and if it succeeded,
     the result is passed to `gf`, and the second parser will be what `gf` returns.
     */
-    bind<B>(gf: (a: A) => Parser<B>): Parser<B>
+    bind<B, E2 extends Error>(gf: (a: A) => Parser<B, E2>): Parser<B, E | E2>
     {
-        return new Parser<B>((input, state) =>
+        return new Parser<B, E | E2>((input, state) =>
         {
             const result = this.f(input, state)
 
-            if (result == Fail)
-                return Fail
+            if (result instanceof Error)
+                return result
 
             return gf(result).f(input, state)
         })
@@ -109,7 +108,7 @@ export default class Parser<A>
     @param p - The other parser to be combined with.
     @return A new parser that firstly tries the first one, and if it succeeded, tries the second one.
     */
-    and<B>(p: Parser<B>): Parser<[A, B]>
+    and<B, E2 extends Error>(p: Parser<B, E2>): Parser<[A, B], E | E2>
     {
         return this.bind(a => p.map(b => [a, b]))
     }
@@ -121,7 +120,7 @@ export default class Parser<A>
     @param p - The other parser to be combined with.
     @return A new parser that only **keeps the result from the **left**.
     */
-    left<B>(p: Parser<B>): Parser<A>
+    left<B, E2 extends Error>(p: Parser<B, E2>): Parser<A, E | E2>
     {
         return this.bind(a => p.map(_ => a))
     }
@@ -133,7 +132,7 @@ export default class Parser<A>
     @param p - The other parser to be combined with.
     @return A nwe parser that only **keeps the result from the right**.
     */
-    right<B>(p: Parser<B>): Parser<B>
+    right<B, E2 extends Error>(p: Parser<B, E2>): Parser<B, E | E2>
     {
         return this.bind(_ => p)
     }
@@ -144,23 +143,23 @@ export default class Parser<A>
 
     @return A new parser that gives a list of results.
     */
-    many(): Parser<Array<A>>
+    many(): Parser<Array<A>, E>
     {
-        return new Parser<Array<A>>((input, state) =>
+        return new Parser<Array<A>, E>((input, state) =>
         {
-            const result: Array<A> = []
+            const results: Array<A> = []
 
             while (true)
             {
-                const r = this.f(input, state)
+                const result = this.f(input, state)
 
-                if (r == Fail)
+                if (result instanceof Error)
                     break
 
-                result.push(r)
+                results.push(result)
             }
 
-            return result
+            return results
         })
     }
 
@@ -170,7 +169,7 @@ export default class Parser<A>
 
     @return A new parser that gives a list of results.
     */
-    some(): Parser<Array<A>>
+    some(): Parser<Array<A>, E>
     {
         return this.many().bind(rs => rs.length > 0 ? pure(rs) : empty);
     }
@@ -178,7 +177,7 @@ export default class Parser<A>
     /*
     Haskell-style infix operator of `and()`.
     */
-    _$_<B>(p: Parser<B>): Parser<[A, B]>
+    _$_<B, E2 extends Error>(p: Parser<B, E2>): Parser<[A, B], E | E2>
     {
         return this.and(p)
     }
@@ -186,7 +185,7 @@ export default class Parser<A>
     /*
     Haskell-style infix operator of `left()`.
     */
-    _$<B>(p: Parser<B>): Parser<A>
+    _$<B, E2 extends Error>(p: Parser<B, E2>): Parser<A, E | E2>
     {
         return this.left(p)
     }
@@ -194,7 +193,7 @@ export default class Parser<A>
     /*
     Haskell-style infix operator of `right()`.
     */
-    $_<B>(p: Parser<B>): Parser<B>
+    $_<B, E2 extends Error>(p: Parser<B, E2>): Parser<B, E | E2>
     {
         return this.right(p)
     }
@@ -205,7 +204,7 @@ export default class Parser<A>
     @param c - The condition
     @return A parser that immediately fails if the condition is false.
     */
-    if (c: boolean): Parser<A>
+    if(c: boolean): Parser<A>
     {
         return c ? this : empty
     }
@@ -216,14 +215,22 @@ export default class Parser<A>
     @param c - The condition function that takes the result from the parser. If it returned true, the parsing succeeded.
     @return A new parser that fails if the result doesn't meet the requirement, even the parsing succeeded.
     */
-    where(c: (a: A) => boolean): Parser<A>
+    where<E2 extends Error = Error>(c: (a: A) => boolean, e2: E2 = new Error() as E2): Parser<A, E | E2>
     {
-        return new Parser((input, state) =>
+        return new Parser<A, E | E2>((input, state) =>
         {
+            const oldIndex = state.index
+
             const result = this.f(input, state)
 
-            if (result != Fail && !c(result))
-                return Fail
+            if (result instanceof Error)
+                return result
+
+            if (!c(result))
+            {
+                state.index = oldIndex
+                return e2
+            }
 
             return result
         })
@@ -233,7 +240,7 @@ export default class Parser<A>
     Make a parser optional by allowing it to fail.
     The same as `optional` in Haskell.
     */
-    optional(): Parser<A | typeof Nothing>
+    optional(): Parser<A | typeof Nothing, E>
     {
         return this.or(pure(Nothing))
     }
@@ -245,14 +252,14 @@ export default class Parser<A>
     @return A new parser that gives a list of results based on how many times it repeated.
     If any of it failed, the whole one failed.
     */
-    x<N extends number>(n: N): Parser<Vector<A, N>>
+    x<N extends number>(n: N): Parser<Vector<A, N>, E>
     {
         if (n < 1)
             throw Error("Number of repetition must be greater than 1")
 
-        const ps: Array<Parser<A>> = Array.from({length: n}, _ => this)
+        const ps: Array<Parser<A, E>> = Array.from({length: n}, _ => this)
 
-        return sequence(ps) as Parser<Vector<A, N>>
+        return sequence(ps) as Parser<Vector<A, N>, E>
     }
 
     /*
@@ -260,16 +267,16 @@ export default class Parser<A>
 
     @return A new parser that gives a bi-tuple (result & range).
     */
-    withRange(): Parser<[A, [number, number]]>
+    withRange(): Parser<[A, [number, number]], E>
     {
-        return new Parser<[A, [number, number]]>((input, state) =>
+        return new Parser<[A, [number, number]], E>((input, state) =>
         {
             const start = state.index
 
             const result = this.f(input, state)
 
-            if (result == Fail)
-                return Fail
+            if (result instanceof Error)
+                return result
 
             const end = state.index
 
@@ -284,16 +291,35 @@ export default class Parser<A>
 
     @return A new parser that will rewind the cursor back to where it started if the parsing failed.
     */
-    try(): Parser<A>
+    try(): Parser<A, E>
     {
-        return new Parser<A>((input, state) =>
+        return new Parser<A, E>((input, state) =>
         {
             const oldState = structuredClone(state)
 
             const result = this.f(input, state)
 
-            if (result == Fail)
+            if (result instanceof Error)
                 state.index = oldState.index
+
+            return result
+        })
+    }
+
+    /*
+    Override the error message of this parser.
+
+    @param e - The new error message.
+    @return A new parser that will throw this new error message.
+    */
+    error<E2 extends Error>(e: E2): Parser<A, E2>
+    {
+        return new Parser<A, E2>((input, state) =>
+        {
+            const result = this.f(input, state)
+
+            if (result instanceof Error)
+                return e
 
             return result
         })
@@ -307,15 +333,10 @@ export default class Parser<A>
     The second one is the state that could reveal where the parser stopped.
     You should import `Fail` to check if it was successful.
     */
-    run(input: string): [A | typeof Fail, State]
+    run(input: string): [A | E, State]
     {
         const state: State = {index: 0}
-
         const result = this.f(Array.from(input), state)
-
-        if (result == Fail)
-            return [Fail, state]
-
         return [result, state]
     }
 
@@ -325,14 +346,9 @@ export default class Parser<A>
     @param input - The string to be parsed.
     @return The parsed result if it succeeded. Or you'll get a `Fail` constant.
     */
-    eval(input: string): A | typeof Fail
+    eval(input: string): A | E
     {
-        const [result] = this.run(input)
-
-        if (result == Fail)
-            return Fail
-
-        return result
+        return this.run(input)[0]
     }
 
     /*
@@ -348,13 +364,10 @@ export default class Parser<A>
         {
             const [result, state] = this.run(input)
 
-            if (result == Fail)
-            {
-                reject("Parsing failed.")
-                return
-            }
-
-            resolve([result, state])
+            if (result instanceof Error)
+                reject(result)
+            else
+                resolve([result, state])
         })
     }
 
@@ -371,13 +384,10 @@ export default class Parser<A>
         {
             const result = this.eval(input)
 
-            if (result == Fail)
-            {
-                reject("Parsing failed.")
-                return
-            }
-
-            resolve(result)
+            if (result instanceof Error)
+                reject(result)
+            else
+                resolve(result)
         })
     }
 
@@ -388,19 +398,17 @@ export default class Parser<A>
     @param message - The message to be shown.
     @return A new parser that will show the message when it succeeded or failed.
     */
-    trace(message: any = ""): Parser<A>
+    trace(...message: Array<any>): Parser<A, E>
     {
-        return new Parser<A>((input, state) =>
+        return new Parser<A, E>((input, state) =>
         {
             const result = this.f(input, state)
 
-            if (result == Fail)
-            {
-                console.error(`[crazy-parser] BAD`, message)
-                return Fail
-            }
+            if (result instanceof Error)
+                console.error(`[crazy-parser] BAD`, result, ...message)
+            else
+                console.log(`[crazy-parser] WIN`, result, ...message)
 
-            console.log(`[crazy-parser] WIN`, message)
             return result
         })
     }
@@ -413,16 +421,17 @@ The same as `pure` or `return` in Haskell.
 @param c - The constant
 @return A parser that always gives that constant, without consuming any input string.
 */
-export function pure<A>(c: A): Parser<A>
+export function pure<A>(c: A): Parser<A, any>
 {
-    return new Parser<A>(_ => c)
+    return new Parser<A, any>(_ => c)
 }
 
 /*
 The parser that always fails.
 The same as `empty` in Haskell.
 */
-export const empty = new Parser<any>(() => Fail)
+export const empty: Parser<any> =
+    new Parser<any, Error>(() => new Error())
 
 /*
 A convenient way to write a list of chained `or()`.
@@ -442,19 +451,20 @@ asum([a, b, c, d])
 @param ps - A list of parsers.
 @return A new parser from combining parsers by `or()`.
 */
-export function asum<Ts extends Array<any>>
-(ps: { [I in keyof Ts]: Parser<Ts[I]> }): Parser<Ts[number]>
-export function asum<Ts extends Array<any>>
-(...ps: { [I in keyof Ts]: Parser<Ts[I]> }): Parser<Ts[number]>
-export function asum<Ts extends Array<any>>
-(...args: MaybeJoined<{ [I in keyof Ts]: Parser<Ts[I]> }>): Parser<Ts[number]>
+export function asum<A>
+(...args: [Array<Parser<A, any>>]): Parser<A>
+export function asum<A>
+(...args: Array<Parser<A, any>>): Parser<A>
+export function asum<A>
+(...args: [Array<Parser<A, any>>] | Array<Parser<A, any>>): Parser<A>
 {
-    const ps = args[0] instanceof Array ? args[0] : args
+    const ps = (args.length == 1 && args[0] instanceof Array) ? args[0] : args as
+        Array<Parser<A, any>>
 
     if (ps.length == 0)
         return empty
 
-    return ps.reduce((sum, p) => sum.or(p))
+    return ps.reduce((sum, p) => sum.or(p)).or(empty)
 }
 
 /*
@@ -466,16 +476,156 @@ The same as `sequence` in Haskell, but with more precise types thanks to the cha
 @return A new parser that tries the parsers one by one from left to right, and gives a list of their results.
 If any of it failed, the whole one failed.
 */
-export function sequence<Ts extends Array<any>>
-(ps: { [I in keyof Ts]: Parser<Ts[I]> }): Parser<Ts[number]>
-export function sequence<Ts extends Array<any>>
-(...ps: { [I in keyof Ts]: Parser<Ts[I]> }): Parser<Ts[number]>
-export function sequence<Ts extends Array<any>>
-(...args: MaybeJoined<{ [I in keyof Ts]: Parser<Ts[I]> }>): Parser<Ts>
+
+export function sequence<
+    A1, E1 extends Error,
+    A2, E2 extends Error,
+>
+(args: [Parser<A1, E1>, Parser<A2, E2>,]):
+    Parser<[A1, A2], E1 | E2>
+
+export function sequence<
+    A1, E1 extends Error,
+    A2, E2 extends Error,
+    A3, E3 extends Error,
+>
+(args: [
+    Parser<A1, E1>,
+    Parser<A2, E2>,
+    Parser<A3, E3>,
+]):
+    Parser<[A1, A2, A3], E1 | E2 | E3>
+
+export function sequence<
+    A1, E1 extends Error,
+    A2, E2 extends Error,
+    A3, E3 extends Error,
+    A4, E4 extends Error,
+>
+(args: [
+    Parser<A1, E1>,
+    Parser<A2, E2>,
+    Parser<A3, E3>,
+    Parser<A4, E4>,
+]):
+    Parser<[A1, A2, A3, A4], E1 | E2 | E3 | E4>
+
+export function sequence<
+    A1, E1 extends Error,
+    A2, E2 extends Error,
+    A3, E3 extends Error,
+    A4, E4 extends Error,
+    A5, E5 extends Error,
+>
+(args: [
+    Parser<A1, E1>,
+    Parser<A2, E2>,
+    Parser<A3, E3>,
+    Parser<A4, E4>,
+    Parser<A5, E5>,
+]):
+    Parser<[A1, A2, A3, A4, A5], E1 | E2 | E3 | E4 | E5>
+
+export function sequence<
+    A1, E1 extends Error,
+    A2, E2 extends Error,
+    A3, E3 extends Error,
+    A4, E4 extends Error,
+    A5, E5 extends Error,
+    A6, E6 extends Error,
+>
+(args: [
+    Parser<A1, E1>,
+    Parser<A2, E2>,
+    Parser<A3, E3>,
+    Parser<A4, E4>,
+    Parser<A5, E5>,
+    Parser<A6, E6>,
+]):
+    Parser<[A1, A2, A3, A4, A5, A6], E1 | E2 | E3 | E4 | E5 | E6>
+
+export function sequence<
+    A1, E1 extends Error,
+    A2, E2 extends Error,
+>
+(...args: [Parser<A1, E1>, Parser<A2, E2>,]):
+    Parser<[A1, A2], E1 | E2>
+
+export function sequence<
+    A1, E1 extends Error,
+    A2, E2 extends Error,
+    A3, E3 extends Error,
+>
+(...args: [
+    Parser<A1, E1>,
+    Parser<A2, E2>,
+    Parser<A3, E3>,
+]):
+    Parser<[A1, A2, A3], E1 | E2 | E3>
+
+export function sequence<
+    A1, E1 extends Error,
+    A2, E2 extends Error,
+    A3, E3 extends Error,
+    A4, E4 extends Error,
+>
+(...args: [
+    Parser<A1, E1>,
+    Parser<A2, E2>,
+    Parser<A3, E3>,
+    Parser<A4, E4>,
+]):
+    Parser<[A1, A2, A3, A4], E1 | E2 | E3 | E4>
+
+export function sequence<
+    A1, E1 extends Error,
+    A2, E2 extends Error,
+    A3, E3 extends Error,
+    A4, E4 extends Error,
+    A5, E5 extends Error,
+>
+(...args: [
+    Parser<A1, E1>,
+    Parser<A2, E2>,
+    Parser<A3, E3>,
+    Parser<A4, E4>,
+    Parser<A5, E5>,
+]):
+    Parser<[A1, A2, A3, A4, A5], E1 | E2 | E3 | E4 | E5>
+
+export function sequence<
+    A1, E1 extends Error,
+    A2, E2 extends Error,
+    A3, E3 extends Error,
+    A4, E4 extends Error,
+    A5, E5 extends Error,
+    A6, E6 extends Error,
+>
+(...args: [
+    Parser<A1, E1>,
+    Parser<A2, E2>,
+    Parser<A3, E3>,
+    Parser<A4, E4>,
+    Parser<A5, E5>,
+    Parser<A6, E6>,
+]):
+    Parser<[A1, A2, A3, A4, A5, A6], E1 | E2 | E3 | E4 | E5 | E6>
+
+export function sequence<Ts extends Array<[any, Error]>>
+(ps: { [I in keyof Ts]: Parser<Ts[I][0], Ts[I][1]> }):
+    Parser<{ [I in keyof Ts]: Ts[I][0] }, Ts[number][1]>
+
+export function sequence<Ts extends Array<[any, Error]>>
+(...ps: { [I in keyof Ts]: Parser<Ts[I][0], Ts[I][1]> }):
+    Parser<{ [I in keyof Ts]: Ts[I][0] }, Ts[number][1]>
+
+export function sequence<Ts extends Array<[any, Error]>>
+(...args: MaybeJoined<{ [I in keyof Ts]: Parser<Ts[I][0], Ts[I][1]> }>):
+    Parser<{ [I in keyof Ts]: Ts[I][0] }, Ts[number][1]>
 {
     const ps = args[0] instanceof Array ? args[0] : args
 
-    return new Parser<Ts>((input, state) =>
+    return new Parser<{ [I in keyof Ts]: Ts[I][0] }, Ts[number][1]>((input, state) =>
     {
         const results: any[] = []
 
@@ -483,8 +633,8 @@ export function sequence<Ts extends Array<any>>
         {
             const result = p.f(input, state)
 
-            if (result == Fail)
-                return Fail
+            if (result instanceof Error)
+                return result
 
             results.push(result)
         }
@@ -496,19 +646,19 @@ export function sequence<Ts extends Array<any>>
 /*
 Test if the parser has reached the end of file (string).
 */
-export const eof = new Parser<unknown>((input, state) =>
+export const eof = new Parser<unknown, Error>((input, state) =>
 {
     if (state.index < input.length)
-        return Fail
+        return new Error()
 })
 
 /*
 Consume one character from the input. Fail if it has reached the end of string.
 */
-export const one = new Parser<string>((input, state) =>
+export const one = new Parser<string, Error>((input, state) =>
 {
     if (state.index >= input.length)
-        return Fail
+        return new Error()
 
     const char = input[state.index]
 
@@ -524,15 +674,15 @@ Parse a specific characters.
 */
 export function char<C extends string>(c: C): Parser<C>
 {
-    return new Parser<C>((input, state) =>
+    return new Parser<C, Error>((input, state) =>
     {
         if (state.index >= input.length)
-            return Fail
+            return new Error()
 
         const char = input[state.index]
 
         if (char != c)
-            return Fail
+            return new Error()
 
         state.index += 1
 
@@ -540,51 +690,54 @@ export function char<C extends string>(c: C): Parser<C>
     })
 }
 
-/*
-Parse a digit (0~9).
-*/
+// Parse a digit (0~9).
 export const digit =
-    asum(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"].map(char))
+    one.where(c => "0" <= c && c <= "9") as
+        Parser<"0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9">
 
-/*
-Parse an uppercase Latin letter without diacritics.
-*/
+// Parse an uppercase Latin letter without diacritics.
 export const upper =
-    asum([
-        "A", "B", "C", "D", "E", "F", "G",
-        "H", "I", "J", "K", "L", "M", "N",
-        "O", "P", "Q", "R", "S", "T",
-        "U", "V", "W", "X", "Y", "Z"].map(char))
+    one.where(c => "A" <= c && c <= "Z") as
+        Parser<
+            "A" | "B" | "C" | "D" | "E" | "F" | "G" |
+            "H" | "I" | "J" | "K" | "L" | "M" | "N" |
+            "O" | "P" | "Q" | "R" | "S" | "T" |
+            "U" | "V" | "W" | "X" | "Y" | "Z">
 
-/*
-Parse a lowercase Latin letter without diacritics.
-*/
+// Parse a lowercase Latin letter without diacritics.
 export const lower =
-    asum([
-        "a", "b", "c", "d", "e", "f", "g",
-        "h", "i", "j", "k", "l", "m", "n",
-        "o", "p", "q", "r", "s", "t",
-        "u", "v", "w", "x", "y", "z"].map(char))
+    one.where(c => "a" <= c && c <= "z") as
+        Parser<
+            "a" | "b" | "c" | "d" | "e" | "f" | "g" |
+            "h" | "i" | "j" | "k" | "l" | "m" | "n" |
+            "o" | "p" | "q" | "r" | "s" | "t" |
+            "u" | "v" | "w" | "x" | "y" | "z">
 
-/*
-Parse a Latin letter without diacritics.
-*/
+// Parse a case-insensitive hexadecimal digit.
+export const hex =
+    digit.or(one.where(c => "A" <= c && c <= "F" || "a" <= c && c <= "f")) as
+        Parser<
+            "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" |
+            "A" | "B" | "C" | "D" | "E" | "F" |
+            "a" | "b" | "c" | "d" | "e" | "f">
+
+// Parse a Latin letter without diacritics.
 export const alpha = upper.or(lower)
 
-/*
-Parse a space.
-*/
+// Parse a space.
 export const space = char(" ")
 
-/*
-Parse a tab.
-*/
+// Parse a tab.
 export const tab = char("\t")
 
-/*
-Parse the index which the parser is looking at.
-*/
-export const index = new Parser<number>((_, state) => state.index)
+// Parse a carriage return.
+export const cr = char("\r")
+
+// Parser a linefeed.
+export const lf = char("\n")
+
+// Parse the index which the parser is looking at.
+export const index = new Parser<number, any>((_, state) => state.index)
 
 /*
 Parse a specific string.
@@ -595,14 +748,14 @@ export function str<S extends string>(s: S): Parser<S>
 {
     const cs = Array.from(s)
 
-    return new Parser<S>((input, state) =>
+    return new Parser<S, Error>((input, state) =>
     {
         if (state.index + cs.length > input.length)
-            return Fail
+            return new Error()
 
         for (let i = 0; i < cs.length; i += 1)
             if (input[state.index + i] != cs[i])
-                return Fail
+                return new Error()
 
         state.index += cs.length
 
@@ -610,9 +763,9 @@ export function str<S extends string>(s: S): Parser<S>
     })
 }
 
-export function span(f: (c: string) => boolean): Parser<Array<string>>
+export function span(f: (c: string) => boolean): Parser<Array<string>, any>
 {
-    return new Parser<Array<string>>((input, state) =>
+    return new Parser<Array<string>, any>((input, state) =>
     {
         let oldIndex = state.index
 
@@ -660,9 +813,9 @@ const srp =
         )
 ```
 */
-export function lazy<A>(pg: () => Parser<A>): Parser<A>
+export function lazy<P extends Parser<any, any>>(pg: () => P): P
 {
-    return new Parser((input, state) => pg().f(input, state))
+    return new Parser((input, state) => pg().f(input, state)) as P
 }
 
 /*
@@ -678,13 +831,9 @@ After:
 template`123${a}456${b}789`
 ```
 */
-export function template<Ts extends Array<any>>
-(ss: TemplateStringsArray, ...ps: { [I in keyof Ts]: Parser<Ts[I]> }): Parser<Ts>
+export function template<Ts extends Array<[any, any]>>
+(ss: TemplateStringsArray, ...ps: { [I in keyof Ts]: Parser<Ts[I][0], Ts[I][1]> }): Parser<{ [I in keyof Ts]: Ts[I][0] }, Ts[number][1]>
 {
-    const sum: Array<Parser<any>> = []
-
-    for (const i in ps)
-        sum.push(str(ss[i]).right(ps[i]))
-
-    return sequence(sum).left(str(ss[ss.length - 1])) as Parser<Ts>
+    return sequence(ps.map((p, i) => str(ss[i]).right(p)) as { [I in keyof Ts]: Parser<Ts[I][0], Ts[I][1]> })
+        .left(str(ss[ss.length - 1]))
 }

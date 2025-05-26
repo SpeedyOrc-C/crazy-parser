@@ -7,8 +7,7 @@ import Parser, {
     char,
     digit,
     empty,
-    eof,
-    Fail,
+    eof, index,
     lazy,
     Nothing,
     one,
@@ -28,25 +27,28 @@ test("Boolean", () =>
 
     expect(bool.eval("true")).toBe(true)
     expect(bool.eval("false")).toBe(false)
-    expect(bool.eval("42")).toBe(Fail)
+    expect(bool.eval("42")).instanceof(Error)
 })
 
 
 test("If", () =>
 {
     expect(pure(42).if(true).eval("")).toBe(42)
-    expect(pure(42).if(false).eval("")).toBe(Fail)
-    expect(empty.if(true).eval("")).toBe(Fail)
-    expect(empty.if(false).eval("")).toBe(Fail)
+    expect(pure(42).if(false).eval("")).instanceOf(Error)
+    expect(empty.if(true).eval("")).instanceOf(Error)
+    expect(empty.if(false).eval("")).instanceOf(Error)
 })
 
 
 test("One & Many", () =>
 {
     expect(one.x(3).eval("123")).toStrictEqual(["1", "2", "3"])
-    expect(one.x(4).eval("123")).toBe(Fail)
+    expect(one.x(4).eval("123")).instanceOf(Error)
 
     try {
+        // TS cannot check if a number is positive with its type system (easily).
+        // So this line will always give an error. So we
+        // @ts-ignore
         one.x(-1)
         assert.fail()
     } catch (e) {}
@@ -69,7 +71,7 @@ test("Try", () =>
     const r2 = p1.eval("113")
     const r3 = p2.eval("13")
 
-    expect(r1).toBe(Fail)
+    expect(r1).instanceOf(Error)
     expect(r2).toBe("13")
     expect(r3).toBe("13")
 })
@@ -84,22 +86,22 @@ test("Span & Range", () =>
             ._$(span(c => '7' <= c && c <= '9'))
 
     expect(p.eval("321444455556666789")).toStrictEqual([3, 15])
-    expect(one.withRange().eval("")).toBe(Fail)
+    expect(one.withRange().eval("")).instanceOf(Error)
 })
 
 
 test("Alternative Sum", () =>
 {
     expect(asum([str("114514"), str("42")]).eval("114514")).toBe("114514")
-    expect(asum([]).eval("114514")).toBe(Fail)
+    expect(asum([]).eval("114514")).instanceOf(Error)
 })
 
 
 test("EOF", () =>
 {
-    expect(eof.eval("")).not.toBe(Fail)
-    expect(eof.eval("1")).toBe(Fail)
-    expect(eof.eval("123")).toBe(Fail)
+    expect(eof.eval("")).not.instanceOf(Error)
+    expect(eof.eval("1")).instanceOf(Error)
+    expect(eof.eval("123")).instanceOf(Error)
 })
 
 
@@ -142,7 +144,8 @@ test("Time", () =>
     const time = template`${d24}:${d60}:${d60}`._$(eof)
 
     expect(time.eval("12:34:56")).toStrictEqual([12, 34, 56])
-    expect(time.eval("99:99:99")).toBe(Fail)
+    expect(time.eval("99:99:99")).instanceOf(Error)
+    expect(time.eval("9:9:9")).instanceOf(Error)
 })
 
 
@@ -155,9 +158,6 @@ test("Recursion between 2", () =>
         char("B").and(a().or(char("!"))).map(xs => xs.join("")))
 
     const result = a()._$(eof).eval("ABABABABABAB!")
-
-    if (result == Fail)
-        assert.fail()
 
     expect(result).toBe("ABABABABABAB!")
 })
@@ -190,6 +190,12 @@ test("Trace", () =>
 })
 
 
+test("Index", () =>
+{
+    expect(sequence(str("apple"), index, str("banana")).eval("applebanana")).toStrictEqual(["apple", 5, "banana"])
+})
+
+
 test("Other prefix functions", () =>
 {
     expect(optional(one).eval("42")).toBe("4")
@@ -203,6 +209,39 @@ test("Variable-length arguments", () =>
     expect(asum([char("1"), char("2")]).eval("2")).toBe("2")
     expect(sequence(char("1"), char("2")).eval("12")).toStrictEqual(["1", "2"])
     expect(sequence([char("1"), char("2")]).eval("12")).toStrictEqual(["1", "2"])
+})
+
+
+test("Custom errors", () =>
+{
+    class MissingA extends Error {}
+    class MissingB extends Error {}
+    class MissingC extends Error {}
+
+    const p = sequence(
+        char("A").error(new MissingA()),
+        char("B").error(new MissingB()),
+        char("C").error(new MissingC()),
+    )
+
+    expect(p.eval("")).instanceof(MissingA)
+    expect(p.eval("A")).instanceof(MissingB)
+    expect(p.eval("AB")).instanceof(MissingC)
+    expect(p.eval("")).instanceof(Error)
+    expect(p.eval("A")).instanceof(Error)
+    expect(p.eval("AB")).instanceof(Error)
+    expect(p.eval("ABC")).not.instanceof(Error)
+
+    const p2 = asum(
+        char("A").error(new MissingA()),
+        char("B").error(new MissingB()),
+        char("C").error(new MissingC()),
+    )
+
+    expect(p2.eval("D")).not.instanceOf(MissingA)
+    expect(p2.eval("D")).not.instanceOf(MissingB)
+    expect(p2.eval("D")).not.instanceOf(MissingC)
+    expect(p2.eval("D")).instanceOf(Error)
 })
 
 
@@ -249,9 +288,6 @@ test("S Expression", () =>
             ))
         ))
     `)
-
-    if (result == Fail)
-        assert.fail()
 
     expect(result).toStrictEqual(
         new Ap(

@@ -3,6 +3,7 @@
     "target": "es2021",
     /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
     "module": "es2022",
+    "lib": ["dom", "es2021"],
     /* Specify what module code is generated. */
     "declaration": true,
     "removeComments": false,
