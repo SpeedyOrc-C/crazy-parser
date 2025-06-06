@@ -9,10 +9,10 @@ type Vector<A, Count extends number, TmpResult extends Array<A> = []> =
 
 type MaybeJoined<T> = T | [T]
 
-export default class Parser<A, E extends Error = Error>
+export class Parser<A, E extends Error = Error>
 {
     constructor(
-        public readonly f: (input: Array<string>, state: State) => A | E
+        public readonly f: (input: Uint32Array, state: State) => A | E
     )
     {}
 
@@ -71,10 +71,23 @@ export default class Parser<A, E extends Error = Error>
         {
             const result = this.f(input, state)
 
-            if (!(result instanceof Error))
-                return result
+            if (result instanceof Error)
+                return p.f(input, state)
 
-            return p.f(input, state)
+            return result
+        })
+    }
+
+    orPure<B>(c: B): Parser<A | B, any>
+    {
+        return new Parser<A | B, any>((input, state) =>
+        {
+            const result = this.f(input, state)
+
+            if (result instanceof Error)
+                return c
+
+            return result
         })
     }
 
@@ -335,8 +348,10 @@ export default class Parser<A, E extends Error = Error>
     */
     run(input: string): [A | E, State]
     {
+        const buffer = Uint32Array.from(Array.from(input).map(c => c.codePointAt(0)))
         const state: State = {index: 0}
-        const result = this.f(Array.from(input), state)
+        const result = this.f(buffer, state)
+
         return [result, state]
     }
 
@@ -660,7 +675,7 @@ export const one = new Parser<string, Error>((input, state) =>
     if (state.index >= input.length)
         return new Error()
 
-    const char = input[state.index]
+    const char = String.fromCodePoint(input[state.index])
 
     state.index += 1
 
@@ -679,7 +694,7 @@ export function char<C extends string>(c: C): Parser<C>
         if (state.index >= input.length)
             return new Error()
 
-        const char = input[state.index]
+        const char = String.fromCodePoint(input[state.index])
 
         if (char != c)
             return new Error()
@@ -746,18 +761,18 @@ Parse a specific string.
 */
 export function str<S extends string>(s: S): Parser<S>
 {
-    const cs = Array.from(s)
+    const buffer = Uint32Array.from(Array.from(s).map(c => c.codePointAt(0)))
 
     return new Parser<S, Error>((input, state) =>
     {
-        if (state.index + cs.length > input.length)
+        if (state.index + buffer.length > input.length)
             return new Error()
 
-        for (let i = 0; i < cs.length; i += 1)
-            if (input[state.index + i] != cs[i])
+        for (let i = 0; i < buffer.length; i += 1)
+            if (input[state.index + i] != buffer[i])
                 return new Error()
 
-        state.index += cs.length
+        state.index += buffer.length
 
         return s
     })
@@ -769,10 +784,10 @@ export function span(f: (c: string) => boolean): Parser<Array<string>, any>
     {
         let oldIndex = state.index
 
-        while (state.index < input.length && f(input[state.index]))
+        while (state.index < input.length && f(String.fromCodePoint(input[state.index])))
             state.index += 1
 
-        return input.slice(oldIndex, state.index)
+        return Array.from(input.slice(oldIndex, state.index)).map(c => String.fromCodePoint(c)).join("")
     })
 }
 

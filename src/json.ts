@@ -1,4 +1,11 @@
-import Parser, {
+/*
+A naïve implementation of JSON parser in pure JavaScript.
+It's about a thousand times slower than the native one, so don't use it.
+This is to prove the correctness of this library.
+*/
+
+import {
+    Parser,
     asum,
     char,
     cr,
@@ -9,13 +16,12 @@ import Parser, {
     lf,
     Nothing,
     one,
-    pure,
     sequence,
     space,
-    str,
     tab
 } from "./index";
 import {many, some} from "./prefix";
+import * as V from "./void"
 
 type MyJSON
     = boolean
@@ -28,19 +34,19 @@ type MyJSON
 const pWhitespace = many(asum(space, lf, cr, tab))
 
 const pBoolean =
-    str("true").cmap(true).or(str("false").cmap(false))
+    V.str("true").cmap(true).or(V.str("false").cmap(false))
 
 const pNull =
-    str("null").cmap(null)
+    V.str("null").cmap(null)
 
 const pNumber =
     sequence(
-        char("-").or(pure("")),
+        char("-").orPure(""),
         some(digit).where(digits => digits[0] != "0" || (digits[0] == "0" && digits.length == 1)),
-        char(".").right(some(digit)).optional(),
+        V.char(".").right(some(digit)).optional(),
         sequence(
             char("e").or(char("E")),
-            char("+").or(char("-")).or(pure("")),
+            char("+").or(char("-")).orPure(""),
             some(digit)).optional(),
     ).map(args =>
     {
@@ -59,45 +65,43 @@ const pNumber =
     })
 
 const pString =
-    char("\"").$_(many(
-        char("\\").right(asum(
-            char("\"").cmap("\""),
-            char("\\").cmap("\\"),
-            char("/").cmap("/"),
-            char("b").cmap("\b"),
-            char("f").cmap("\f"),
-            char("n").cmap("\n"),
-            char("r").cmap("\r"),
-            char("t").cmap("\t"),
-            char("u").right(hex.x(4)).map(ds => String.fromCodePoint(Number(`0x${ds.join("")}`))),
+    V.char("\"").$_(many(
+        V.char("\\").right(asum(
+            V.char("\"").cmap("\""),
+            V.char("\\").cmap("\\"),
+            V.char("/").cmap("/"),
+            V.char("b").cmap("\b"),
+            V.char("f").cmap("\f"),
+            V.char("n").cmap("\n"),
+            V.char("r").cmap("\r"),
+            V.char("t").cmap("\t"),
+            V.char("u").right(hex.x(4)).map(ds => String.fromCodePoint(Number(`0x${ds.join("")}`))),
         )).or(one.where(c => c != "\""))
-    ))._$(char("\"")).map(cs => cs.join(""))
+    ))._$(V.char("\"")).map(cs => cs.join(""))
 
-const pValue = lazy(() =>
+const pValue =
     pWhitespace.$_(asum<MyJSON>(
-        pNull,
-        pBoolean,
         pString,
         pNumber,
-        pArray,
-        pObject
+        pBoolean,
+        pNull,
+        lazy(() => pObject),
+        lazy(() => pArray),
     ))._$(pWhitespace)
-)
 
 const pArray: Parser<Array<MyJSON>> =
-    char("[").$_(
-        pValue.and(many(char(",").$_(pValue))).map(a => [a[0], ...a[1]])
-            .or(pure([])) // Note: The whitespace should've been consumed
-    )._$(char("]"))
-
+    V.char("[").$_(
+        pValue.and(many(V.char(",").$_(pValue))).map(a => [a[0], ...a[1]])
+            .orPure([]) // Note: The whitespace should've been consumed
+    )._$(V.char("]"))
 
 const pObjectEntry =
-    pWhitespace.$_(pString.and(pWhitespace.$_(char(":")).$_(pValue)))
+    pWhitespace.$_(pString.and(pWhitespace.$_(V.char(":")).$_(pValue)))
 
 const pObject: Parser<{ [key: string]: MyJSON }> =
-    char("{").$_(
-        pObjectEntry.and(many(char(",").$_(pObjectEntry))).map(a => Object.fromEntries([a[0], ...a[1]]))
-            .or(pure({}))
-    )._$(char("}"))
+    V.char("{").$_(
+        pObjectEntry.and(many(V.char(",").$_(pObjectEntry))).map(a => Object.fromEntries([a[0], ...a[1]]))
+            .orPure({})
+    )._$(V.char("}"))
 
 export const json: Parser<any> = pValue._$(eof)

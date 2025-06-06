@@ -1,5 +1,6 @@
 import {test, expect, assert} from "vitest"
-import Parser, {
+import {
+    Parser,
     alpha,
     anyChar,
     anyStr,

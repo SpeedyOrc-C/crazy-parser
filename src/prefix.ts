@@ -1,4 +1,4 @@
-import Parser from "./index";
+import {Parser} from "./index";
 
 export function optional<A>(p: Parser<A>) { return p.optional() }
 
