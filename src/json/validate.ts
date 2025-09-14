@@ -111,6 +111,14 @@ export const asum: <Ts extends any[]>(...inners: { [k in keyof Ts]: Validator<Ts
 	return new TypeError(`No alternatives matched, got errors: ${errors.map(e => e.message).join("; ")}`)
 }
 
+export const eq: <A>(value: A) => Validator<A> = value => input =>
+{
+	if (input !== value)
+		return new TypeError(`Expected ${JSON.stringify(value)}, got ${JSON.stringify(input)}`)
+
+	return value
+}
+
 export const when: <A, NewA extends A = A>(
 	validator: Validator<A>,
 	predicate: (a: A) => boolean,

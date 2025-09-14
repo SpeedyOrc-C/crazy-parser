@@ -1,6 +1,6 @@
 import {assert, test} from "vitest"
 
-import {array, bool, nil, num, obj, str, sequence, asum} from "../src/json/validate"
+import {array, bool, nil, num, obj, str, sequence, asum, eq} from "../src/json/validate"
 
 test("Boolean", () =>
 {
@@ -129,4 +129,17 @@ test("Sum of Alternatives", () =>
 	assert(f(true) instanceof TypeError)
 	assert(f([]) instanceof TypeError)
 	assert(f({}) instanceof TypeError)
+})
+
+test("Equal", () =>
+{
+	assert(! (eq(42)(42) instanceof TypeError))
+	assert(! (eq("foo")("foo") instanceof TypeError))
+	assert(! (eq(true)(true) instanceof TypeError))
+	assert(! (eq(null)(null) instanceof TypeError))
+
+	assert(eq(42)(43) instanceof TypeError)
+	assert(eq("foo")("bar") instanceof TypeError)
+	assert(eq(true)(false) instanceof TypeError)
+	assert(eq(null)(0) instanceof TypeError)
 })
