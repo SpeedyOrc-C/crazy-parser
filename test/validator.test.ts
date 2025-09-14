@@ -104,7 +104,7 @@ test("Object", () =>
 	assert(f(42) instanceof TypeError)
 	assert(f(true) instanceof TypeError)
 	assert(f(null) instanceof TypeError)
-	assert(f([]) instanceof TypeError)
+	assert(student([]) instanceof TypeError)
 })
 
 test("Sequence", () =>
