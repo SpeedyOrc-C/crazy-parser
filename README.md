@@ -81,7 +81,7 @@ console.log(time.eval("99:99:99") instanceof Error) // true
 console.log(time.eval("9:9:9") instanceof Error) // true
 ```
 
-You can go to [test](./test/Parser.test.ts) folder for more examples.
+You can go to [test](test/parser.test.ts) folder for more examples.
 If you'd like to read the docs and the signatures, please go to [the main module](./src/index.ts). 
 
 ## Development
