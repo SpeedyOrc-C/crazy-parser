@@ -1,6 +1,6 @@
 {
   "name": "crazy-parser",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "A light-weight parser combinator",
   "type": "module",
   "files": [
@@ -10,7 +10,8 @@
   ],
   "exports": {
     ".": "./src/index.js",
-    "./**/*": "./src/**/*.js"
+    "./*": "./src/*.js",
+    "./json/*": "./src/json/*.js"
   },
   "scripts": {
     "build": "cd src && tsc",
