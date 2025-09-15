@@ -1,6 +1,6 @@
 import {assert, test} from "vitest"
 
-import {array, bool, nil, num, obj, str, sequence, asum, eq} from "../src/json/validate"
+import {array, bool, nil, num, obj, str, sequence, asum, ands, eq, where} from "../src/json/validate"
 
 test("Boolean", () =>
 {
@@ -113,6 +113,8 @@ test("Sequence", () =>
 
 	assert(! (f(["foo", 42, ["bar", "baz"]]) instanceof TypeError))
 
+	assert(f(42) instanceof TypeError)
+	assert(f(["foo", 42]) instanceof TypeError)
 	assert(f([42, 42, ["bar", "baz"]]) instanceof TypeError)
 	assert(f(["foo", "foo", ["bar", "baz"]]) instanceof TypeError)
 	assert(f(["foo", 42, [42, "baz"]]) instanceof TypeError)
@@ -131,6 +133,27 @@ test("Sum of Alternatives", () =>
 	assert(f({}) instanceof TypeError)
 })
 
+test("Intersection", () =>
+{
+	const f = ands(
+		obj({a: eq(1 as const)}),
+		obj({b: eq(2 as const)}),
+		obj({c: eq(3 as const)}),
+	)
+
+	assert(! (f({a: 1, b: 2, c: 3}) instanceof TypeError))
+
+	assert((f({a: 3, b: 2, c: 1}) instanceof TypeError))
+
+	assert(f({a: 1, b: 2}) instanceof TypeError)
+	assert(f({a: 1, c: 3}) instanceof TypeError)
+	assert(f({b: 2, c: 3}) instanceof TypeError)
+	assert(f({a: 1}) instanceof TypeError)
+	assert(f({b: 2}) instanceof TypeError)
+	assert(f({c: 3}) instanceof TypeError)
+	assert(f({}) instanceof TypeError)
+})
+
 test("Equal", () =>
 {
 	assert(! (eq(42)(42) instanceof TypeError))
@@ -142,4 +165,15 @@ test("Equal", () =>
 	assert(eq("foo")("bar") instanceof TypeError)
 	assert(eq(true)(false) instanceof TypeError)
 	assert(eq(null)(0) instanceof TypeError)
+})
+
+test("Conditional", () =>
+{
+	const f = where(num, x => x >= 42)
+
+	assert(! (f(42) instanceof TypeError))
+	assert(! (f(100) instanceof TypeError))
+
+	assert(f(41) instanceof TypeError)
+	assert(f(true) instanceof TypeError)
 })

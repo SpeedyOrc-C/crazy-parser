@@ -111,6 +111,25 @@ export const asum: <Ts extends any[]>(...inners: { [k in keyof Ts]: Validator<Ts
 	return new TypeError(`No alternatives matched, got errors: ${errors.map(e => e.message).join("; ")}`)
 }
 
+type Ands<Ts extends any[]> =
+	Ts extends [infer Head, ...infer Tail]
+		? Head & Ands<Tail>
+		: unknown
+
+export const ands: <Ts extends any[]>(...inners: { [k in keyof Ts]: Validator<Ts[k]> }) => Validator<Ands<Ts>> = (...inners) => input =>
+{
+	for (const i in inners)
+	{
+		const validator = inners[i]
+		const result = validator(input)
+
+		if (result instanceof TypeError)
+			return new TypeError(`Failed at step ${i}: ${result.message}`)
+	}
+
+	return input as any
+}
+
 export const eq: <A>(value: A) => Validator<A> = value => input =>
 {
 	if (input !== value)
@@ -119,7 +138,7 @@ export const eq: <A>(value: A) => Validator<A> = value => input =>
 	return value
 }
 
-export const when: <A, NewA extends A = A>(
+export const where: <A, NewA extends A = A>(
 	validator: Validator<A>,
 	predicate: (a: A) => boolean,
 	error?: TypeError,
