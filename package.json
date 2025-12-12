@@ -22,7 +22,7 @@
   "author": "chen-zhanming",
   "license": "MIT",
   "repository": {
-    "url": "https://github.com/SpeedyOrc-C/crazy-parser"
+    "url": "git+https://github.com/SpeedyOrc-C/crazy-parser.git"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.1.3",
