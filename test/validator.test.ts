@@ -86,25 +86,62 @@ const studentsIncorrect = [
 	{name: "David", age: "10", parents: ["Eve", "Frank"]}, // age should be number
 ]
 
+const student = obj({
+	name: str,
+	age: num,
+	parents: array(str),
+})
+
+const students = array(student)
+
 test("Object", () =>
+{
+	assert(! (students(studentsCorrect) instanceof TypeError))
+
+	assert(students(studentsIncorrect) instanceof TypeError)
+
+	assert(students("foo") instanceof TypeError)
+	assert(students(42) instanceof TypeError)
+	assert(students(true) instanceof TypeError)
+	assert(students(null) instanceof TypeError)
+	assert(student([]) instanceof TypeError)
+})
+
+test("Object with empty fallback", () =>
 {
 	const student = obj({
 		name: str,
 		age: num,
 		parents: array(str),
+	}, {})
+
+	const students = array(student)
+
+	assert(! (students(studentsCorrect) instanceof TypeError))
+
+	assert(students(studentsIncorrect) instanceof TypeError)
+
+	assert(students("foo") instanceof TypeError)
+	assert(students(42) instanceof TypeError)
+	assert(students(true) instanceof TypeError)
+	assert(students(null) instanceof TypeError)
+	assert(student([]) instanceof TypeError)
+})
+
+test("Object with fallback", () =>
+{
+	const f = obj({
+		name: str,
+		age: num,
+		parents: array(str),
+	}, {
+		age: 42,
 	})
 
-	const f = array(student)
-
-	assert(! (f(studentsCorrect) instanceof TypeError))
-
-	assert(f(studentsIncorrect) instanceof TypeError)
-
-	assert(f("foo") instanceof TypeError)
-	assert(f(42) instanceof TypeError)
-	assert(f(true) instanceof TypeError)
-	assert(f(null) instanceof TypeError)
-	assert(student([]) instanceof TypeError)
+	assert(f({age: 456, parents: ["789"]}) instanceof TypeError)
+	assert(!(f({name: "123", age: 456, parents: ["789"]}) instanceof TypeError))
+	assert(!(f({name: "123", age: "456", parents: ["789"]}) instanceof TypeError))
+	assert(!(f({name: "123", parents: ["789"]}) instanceof TypeError))
 })
 
 test("Sequence", () =>
