@@ -14,3 +14,4 @@ clean:
 	rm -f ./src/*.d.ts
 	rm -f ./src/**/*.js
 	rm -f ./src/**/*.d.ts
+	rm -rf ./coverage

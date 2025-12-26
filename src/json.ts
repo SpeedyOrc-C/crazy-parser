@@ -19,8 +19,8 @@ import {
 	sequence,
 	space,
 	tab
-} from "./index";
-import {many, some} from "./prefix";
+} from "./index"
+import {many, some} from "./prefix"
 import * as V from "./void"
 
 type MyJSON

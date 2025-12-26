@@ -184,7 +184,7 @@ export class Parser<A, E extends Error = Error>
 	*/
 	some(): Parser<Array<A>, E>
 	{
-		return this.many().bind(rs => rs.length > 0 ? pure(rs) : empty);
+		return this.many().bind(rs => rs.length > 0 ? pure(rs) : empty)
 	}
 
 	/*

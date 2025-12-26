@@ -1,4 +1,4 @@
-import {Parser} from "./index";
+import {Parser} from "./index"
 
 export function char(c: string): Parser<undefined>
 {
