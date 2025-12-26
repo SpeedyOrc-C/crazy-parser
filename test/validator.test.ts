@@ -1,6 +1,6 @@
 import {assert, test} from "vitest"
 
-import {array, bool, nil, num, obj, str, sequence, asum, ands, eq, where} from "../src/json/validate"
+import {array, bool, nil, num, obj, str, sequence, asum, ands, eq, where, lazy, Validator} from "../src/json/validate"
 
 test("Boolean", () =>
 {
@@ -139,9 +139,9 @@ test("Object with fallback", () =>
 	})
 
 	assert(f({age: 456, parents: ["789"]}) instanceof TypeError)
-	assert(!(f({name: "123", age: 456, parents: ["789"]}) instanceof TypeError))
-	assert(!(f({name: "123", age: "456", parents: ["789"]}) instanceof TypeError))
-	assert(!(f({name: "123", parents: ["789"]}) instanceof TypeError))
+	assert(! (f({name: "123", age: 456, parents: ["789"]}) instanceof TypeError))
+	assert(! (f({name: "123", age: "456", parents: ["789"]}) instanceof TypeError))
+	assert(! (f({name: "123", parents: ["789"]}) instanceof TypeError))
 })
 
 test("Sequence", () =>
@@ -213,4 +213,31 @@ test("Conditional", () =>
 
 	assert(f(41) instanceof TypeError)
 	assert(f(true) instanceof TypeError)
+})
+
+test("Recursive", () =>
+{
+	type Foo = "." | ["A", Foo] | ["B", Foo]
+
+	const stop = eq("." as const)
+
+	const a: () => Validator<Foo> = () => lazy(() =>
+		asum(eq("." as const), sequence(eq("A" as const), b())))
+
+	const b: () => Validator<Foo> = () => lazy(() =>
+		asum(eq("." as const), sequence(eq("B" as const), a())))
+
+	const f = asum(stop, a(), b())
+
+	assert(! (f(".") instanceof TypeError))
+	assert(! (f(["A", "."]) instanceof TypeError))
+	assert(! (f(["A", ["B", "."]]) instanceof TypeError))
+	assert(! (f(["A", ["B", ["A", "."]]]) instanceof TypeError))
+	assert(! (f(["A", ["B", ["A", ["B", "."]]]]) instanceof TypeError))
+	assert(! (f(["B", ["A", ["B", ["A", "."]]]]) instanceof TypeError))
+
+	assert((f(["A", ["B", ["A", ["B", ["B", "."]]]]]) instanceof TypeError))
+	assert((f(["B", ["A", ["B", ["A", ["A", "."]]]]]) instanceof TypeError))
+	assert((f(["A", "B"]) instanceof TypeError))
+	assert((f(["B", "A"]) instanceof TypeError))
 })

@@ -178,3 +178,8 @@ export const where: <A, NewA extends A = A>(
 
 	return result as any
 }
+
+export function lazy<V extends Validator<any>>(vg: () => V): V
+{
+	return (input => vg()(input)) as V
+}
