@@ -241,3 +241,13 @@ test("Recursive", () =>
 	assert((f(["A", "B"]) instanceof TypeError))
 	assert((f(["B", "A"]) instanceof TypeError))
 })
+
+test("Nested Partial", () => {
+	const f = obj({a: obj({b: num, c: num}, {b: 2, c: 3})}, {a: {b: 2, c: 3}})
+	const y = f({a: {b: 100, d: 114514}})
+
+	assert(! (y instanceof TypeError))
+	assert(y.a.b == 100)
+	assert(y.a.c == 3)
+	assert(!("d" in y.a))
+})

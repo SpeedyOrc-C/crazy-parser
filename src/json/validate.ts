@@ -53,47 +53,44 @@ export const array: <A>(inner: Validator<A>) => Validator<A[]> = inner => input 
 
 export const obj: <Vs extends Record<string, any>, _Vs = Vs>(
 	inner: { [k in keyof Vs]: Validator<Vs[k]> },
-	fallback?: { [k in keyof _Vs]?: _Vs[k] }
+	fallback?: { [k in keyof _Vs]?: _Vs[k] },
 ) => Validator<{ [i in keyof Vs]: Vs[i] }>
 	= (inner, fallback) => input =>
 {
 	if (typeof input != "object" || input === null || Array.isArray(input))
 		return new TypeError(`Expected object, got ${JSON.stringify(input)}`)
 
-	let _input = input as Record<string, unknown>
+	const result = {} as Record<string, unknown>
 
 	for (const key in inner)
 	{
-		const validator = inner[key]
-
-		if (! (key in _input))
+		if (! (key in input))
 		{
 			if (! fallback || ! (key in fallback))
 				return new TypeError(`Missing key: ${key}`)
 
-			if (input == _input)
-				_input = structuredClone(_input)
-
-			_input[key] = (fallback as any)[key]
+			result[key] = (fallback as any)[key]
 
 			continue
 		}
 
-		const result = validator((_input as any)[key])
+		const validator = inner[key]
+		const innerResult = validator((input as any)[key])
 
-		if (result instanceof TypeError)
+		if (innerResult instanceof TypeError)
 		{
 			if (! fallback || ! (key in fallback))
 				return new TypeError(`Invalid key ${key}: ${result.message}`)
 
-			if (input == _input)
-				_input = structuredClone(_input)
+			result[key] = (fallback as any)[key]
 
-			_input[key] = (fallback as any)[key]
+			continue
 		}
+
+		result[key] = innerResult
 	}
 
-	return _input as any
+	return result as any
 }
 
 export const sequence: <Ts extends any[]>(...inners: { [k in keyof Ts]: Validator<Ts[k]> }) => Validator<Ts> = (...inners) => input =>
