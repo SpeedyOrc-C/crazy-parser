@@ -70,13 +70,10 @@ test("Try", () =>
 	const p1 = char("1").and(char("2")).or(str("13"))
 	const p2 = char("1").and(char("2")).try().or(str("13"))
 
-	const r1 = p1.eval("13")
-	const r2 = p1.eval("113")
-	const r3 = p2.eval("13")
-
-	expect(r1).instanceOf(Error)
-	expect(r2).toBe("13")
-	expect(r3).toBe("13")
+	expect(p1.eval("13")).instanceOf(Error)
+	expect(p1.eval("113")).toBe("13")
+	expect(p2.eval("13")).toBe("13")
+	expect(p2.eval("14")).instanceOf(Error)
 })
 
 
