@@ -10,6 +10,8 @@ test("Small", () =>
 	expect(json.eval("true")).toBe(true)
 	expect(json.eval("false")).toBe(false)
 	expect(json.eval("null")).toBe(null)
+	expect(json.eval("\"\\u00A0\"")).toBe("\u00A0")
+	expect(json.eval("\"\\u00a0\"")).toBe("\u00A0")
 	expect(json.eval("{}")).toStrictEqual({})
 	expect(json.eval("[]")).toStrictEqual([])
 })
