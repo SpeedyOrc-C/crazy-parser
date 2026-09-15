@@ -1,6 +1,7 @@
 /node_modules
 /coverage
 /.idea
+/*.tgz
 .DS_Store
 *.js
 *.d.ts
